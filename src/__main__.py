@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 # Constants
 BASE_URL = 'https://api.warframe.market/v2/'
-HEADERS = {'accept': 'application/json', 'platform': 'pc'}
+HEADERS = {'accept': 'application/json', 'platform': 'pc', 'crossplay': 'true'}
 WH_HEADERS = {'accept': 'application/json'}
 WH_EMBED_COLOR = hex_to_embed_color('#e362ab')
 
