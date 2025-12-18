@@ -147,7 +147,7 @@ class OrderChecker:
         fmt = await fmt_task
 
         # Send webhook and copy to clipboard
-        await asyncio.create_task(self.notify_webhook(order, description=fmt))
+        asyncio.create_task(self.notify_webhook(order, description=fmt))
         pyperclip.copy(fmt)
 
         print(f'\r{fmt}', flush=True)
