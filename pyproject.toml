@@ -1,0 +1,46 @@
+[project]
+name = "wf-market-checker"
+version = "0.1.0"
+description = "Warframe Market Order Checker"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp>=3.13.2",
+    "aiolimiter>=1.2.1",
+    "colorama>=0.4.6",
+    "pydantic>=2.12.4",
+    "pyperclip>=1.11.0",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.pylint]
+ignore-patterns = ".*\\.pyi"
+
+[tool.pylint.main]
+max-line-length = 126
+disable = [
+    'basic',                         # Useless in my opinion
+    'broad-exception-caught',        # Shut the fuck up I know what I'm doing
+    'abstract-method',               # Shut up
+    'logging-fstring-interpolation', # f-strings my beloved, how dare you forbid me from using them
+    'unsubscriptable-object',        # https://github.com/pylint-dev/pylint/issues/3488
+    'used-before-assignment',        # A lot of false positives
+    'unused-import',                 # Handled by pyright
+    'line-too-long',
+]
+
+[tool.black]
+line-length = 125
+skip-string-normalization = true
+
+[tool.isort]
+profile = 'black'
+line_length = 88
+combine_as_imports = true
+combine_star = true
+
+[tool.ruff]
+line-length = 125
+format.quote-style = 'single'
