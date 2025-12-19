@@ -1,5 +1,3 @@
-#!/usr/bin/env -S uv run
-
 """
 This script monitors warframe.market for items listed below a specified price threshold.
 When a suitable order is found, it plays a sound, copies a whisper message to the clipboard,
@@ -28,10 +26,11 @@ from .config import (
     SOUND,
     WEBHOOK_URL,
 )
-from .models import OrderWithUser, Order, Item as ItemModel
+from .models import Item as ItemModel
+from .models import Order, OrderWithUser
 from .responses import ItemResponse, OrdersItemTopResponse
 from .types import Item
-from .utils import clear_line, hex_to_embed_color
+from .utils import clear_line, error, hex_to_embed_color
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -81,9 +80,7 @@ class OrderChecker:
             stderr=subprocess.DEVNULL,
         )
 
-    async def notify_webhook(
-        self, order: OrderWithUser, item: ItemModel, /
-    ) -> None:
+    async def notify_webhook(self, order: OrderWithUser, item: ItemModel, /) -> None:
         """Send a webhook notification when a suitable order is found."""
         if not WEBHOOK_URL:
             return
@@ -157,21 +154,21 @@ class OrderChecker:
         """
         # An extra api request is needed to get the item name
         # so we will schedule that in the background while we do other things
-        item_task = asyncio.create_task(self.request_item_from_order(order))
+        item_model_task = asyncio.create_task(self.request_item_from_order(order))
 
         self.found_orders_ids.add(order.id)
         self.play_sound()
 
-        item = await item_task
+        item_model = await item_model_task
 
         # Probably can't happen
-        if item is None:
+        if item_model is None:
             print(f'\r{Fore.RED}Bad data (invalid item).{Fore.RESET}', flush=True)
             return
 
         # Send webhook and copy to clipboard
-        fmt = self.format_buy_message(order, item)
-        await asyncio.create_task(self.notify_webhook(order, item))
+        fmt = self.format_buy_message(order, item_model)
+        asyncio.create_task(self.notify_webhook(order, item_model))
         pyperclip.copy(fmt)
 
         print(f'\r{fmt}', flush=True)
@@ -202,18 +199,22 @@ class OrderChecker:
 
         # Main loop
         while True:
-            # Get the list of orders
             async with self.rate_limiter:
-                async with self.session.get(request) as r:
-                    r.raise_for_status()
-                    orders_resp = OrdersItemTopResponse.model_validate(await r.json())
+                # Get the list of orders
+                try:
+                    async with self.session.get(request) as r:
+                        r.raise_for_status()
+                        data = await r.json()
+                        orders_resp = OrdersItemTopResponse.model_validate(data)
+                except asyncio.TimeoutError:
+                    error(f'Request timed out for {item}. Continuing.')
+                    continue
 
             self.total += 1
 
             # Handle no data
             if not orders_resp.data:
-                clear_line()
-                print(f'\r{Fore.RED}No data.{Fore.RESET}', end='')
+                error(f'No data for {item.name}.')
                 continue
 
             # Notify user
@@ -275,7 +276,7 @@ class OrderChecker:
                 base_url=BASE_URL, headers=HEADERS, timeout=ClientTimeout(total=10)
             ) as session,
             aiohttp.ClientSession(
-                # headers=WEBHOOK_HEADERS,
+                headers=WH_HEADERS,
                 timeout=ClientTimeout(total=10),
             ) as wh_session,
         ):
