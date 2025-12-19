@@ -6,4 +6,5 @@ from typing import NamedTuple
 class Item(NamedTuple):
     name: str
     price_threshold: int
+    quantity_min: int = -1
     rank: int = 5

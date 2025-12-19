@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class I18nEntry(BaseModel):
+class ItemI18n(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str
@@ -40,7 +40,7 @@ class Item(BaseModel):
     vaulted: bool | None = None
     trading_tax: int | None = Field(None, alias='tradingTax')
     tradable: bool | None = None
-    i18n: dict[str, I18nEntry] | None = None
+    i18n: dict[str, ItemI18n] = Field(default_factory=dict, alias='i18n')
 
 
 class ItemShort(BaseModel):
@@ -50,7 +50,7 @@ class ItemShort(BaseModel):
     slug: str
     game_ref: str = Field(alias='gameRef')
     tags: list[str] = Field(default_factory=list)
-    i18n: dict[str, I18nEntry]
+    i18n: dict[str, ItemI18n]
 
     max_rank: int | None = Field(None, alias='maxRank')
     max_charges: int | None = Field(None, alias='maxCharges')
@@ -76,6 +76,8 @@ class UserShort(BaseModel):
 
     id: str
     ingame_name: str = Field(alias='ingameName')
+    avatar: str | None = None
+    slug: str = ''
     avatar: str | None = None
     reputation: int
     locale: str

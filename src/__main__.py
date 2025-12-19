@@ -17,6 +17,8 @@ import pyperclip
 from aiohttp import ClientTimeout
 from aiolimiter import AsyncLimiter
 from colorama import Fore
+from discord import Embed
+from discord.utils import utcnow
 
 from .config import (
     CHECK_INTERVAL,
@@ -26,7 +28,7 @@ from .config import (
     SOUND,
     WEBHOOK_URL,
 )
-from .models import OrderWithUser
+from .models import OrderWithUser, Order, Item as ItemModel
 from .responses import ItemResponse, OrdersItemTopResponse
 from .types import Item
 from .utils import clear_line, hex_to_embed_color
@@ -38,8 +40,9 @@ if TYPE_CHECKING:
 
 # Constants
 BASE_URL = 'https://api.warframe.market/v2/'
-HEADERS = {'accept': 'application/json', 'platform': 'pc', 'crossplay': 'true'}
-WH_HEADERS = {'accept': 'application/json'}
+ASSETS_BASE_URL = 'https://warframe.market/static/assets/'
+HEADERS = dict(accept='application/json', platform='pc', crossplay='true')
+WH_HEADERS = dict(accept='application/json')
 WH_EMBED_COLOR = hex_to_embed_color('#e362ab')
 
 
@@ -79,28 +82,41 @@ class OrderChecker:
         )
 
     async def notify_webhook(
-        self, order: OrderWithUser, /, *, description: str = ''
+        self, order: OrderWithUser, item: ItemModel, /
     ) -> None:
         """Send a webhook notification when a suitable order is found."""
         if not WEBHOOK_URL:
             return
 
-        quantity = order.quantity
+        item_en = item.i18n['en']
 
-        quantity_fmt = f'\n Quantity: {quantity}' if quantity > 1 else ''
         content_fmt = ' '.join(f'<@{id}>' for id in PING_DISCORD_IDS)
-        description += quantity_fmt
+        title = f'{item_en.name} (rank {order.rank})'
+        icon_url = ASSETS_BASE_URL + (order.user.avatar or 'user/default-avatar.webp')
 
-        data: dict[str, Any] = {
-            'content': content_fmt,
-            'embeds': [
-                {
-                    'title': 'Warframe Market Bot',
-                    'description': description,
-                    'color': WH_EMBED_COLOR,
-                }
-            ],
-        }
+        embed = (
+            Embed(
+                title=title,
+                color=WH_EMBED_COLOR,
+                timestamp=utcnow(),
+            )
+            .set_thumbnail(url=ASSETS_BASE_URL + item_en.icon)
+            .set_author(
+                name=order.user.ingame_name,
+                url=f'https://warframe.market/profile/{order.user.slug}',
+                icon_url=icon_url,
+            )
+        )
+
+        embed.add_field(name='Platinum', value=order.platinum, inline=True)
+
+        if order.quantity > 1:
+            embed.add_field(name='Quantity', value=order.quantity, inline=True)
+
+        data: dict[str, Any] = dict(
+            content=content_fmt,
+            embeds=[embed.to_dict()],
+        )
 
         async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
             r.raise_for_status()
@@ -109,17 +125,19 @@ class OrderChecker:
         r_fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}'
         print(r_fmt, end='', flush=True)
 
-    async def format_buy_message(self, order: OrderWithUser) -> str:
-        # Get item name
+    async def request_item_from_order(self, order: Order, /) -> ItemModel | None:
         async with self.rate_limiter:
             async with self.session.get(f'item/{order.item_id}') as r:
                 r.raise_for_status()
                 item_resp = ItemResponse.model_validate(await r.json())
 
-        if not item_resp.data or not item_resp.data.i18n:
-            return 'MISSING'
+        if not item_resp.data or not item_resp.data.i18n.get('en'):
+            return None
 
-        item_name = item_resp.data.i18n['en'].name
+        return item_resp.data
+
+    def format_buy_message(self, order: OrderWithUser, item: ItemModel) -> str:
+        item_name = item.i18n['en'].name
 
         # Make format
         fmt = (
@@ -139,24 +157,31 @@ class OrderChecker:
         """
         # An extra api request is needed to get the item name
         # so we will schedule that in the background while we do other things
-        fmt_task = asyncio.create_task(self.format_buy_message(order))
+        item_task = asyncio.create_task(self.request_item_from_order(order))
 
         self.found_orders_ids.add(order.id)
         self.play_sound()
 
-        fmt = await fmt_task
+        item = await item_task
+
+        # Probably can't happen
+        if item is None:
+            print(f'\r{Fore.RED}Bad data (invalid item).{Fore.RESET}', flush=True)
+            return
 
         # Send webhook and copy to clipboard
-        asyncio.create_task(self.notify_webhook(order, description=fmt))
+        fmt = self.format_buy_message(order, item)
+        await asyncio.create_task(self.notify_webhook(order, item))
         pyperclip.copy(fmt)
 
         print(f'\r{fmt}', flush=True)
 
     def predicate_order(self, order: OrderWithUser, item: Item) -> bool:
         return (
-            order.platinum <= item.price_threshold
+            order.id not in self.found_orders_ids
+            and order.platinum <= item.price_threshold
+            and order.quantity >= item.quantity_min
             and order.user.status == 'ingame'
-            and order.id not in self.found_orders_ids
         )
 
     async def check_orders(self, item: Item) -> Item:
@@ -271,7 +296,7 @@ class OrderChecker:
                     task.cancel()
 
 
-async def init_assets() -> None:
+async def init_checks() -> None:
     pass
 
 
