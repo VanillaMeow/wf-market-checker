@@ -40,8 +40,8 @@ if TYPE_CHECKING:
 # Constants
 BASE_URL = 'https://api.warframe.market/v2/'
 ASSETS_BASE_URL = 'https://warframe.market/static/assets/'
-HEADERS = dict(accept='application/json', platform='pc', crossplay='true')
-WH_HEADERS = dict(accept='application/json')
+HEADERS = {'accept': 'application/json', 'platform': 'pc', 'crossplay': 'true'}
+WH_HEADERS = {'accept': 'application/json'}
 WH_EMBED_COLOR = hex_to_embed_color('#e362ab')
 
 
@@ -110,10 +110,10 @@ class OrderChecker:
         if order.quantity > 1:
             embed.add_field(name='Quantity', value=order.quantity, inline=True)
 
-        data: dict[str, Any] = dict(
-            content=content_fmt,
-            embeds=[embed.to_dict()],
-        )
+        data: dict[str, Any] = {
+            'content': content_fmt,
+            'embeds': [embed.to_dict()],
+        }
 
         async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
             r.raise_for_status()
@@ -123,10 +123,9 @@ class OrderChecker:
         print(r_fmt, end='', flush=True)
 
     async def request_item_from_order(self, order: Order, /) -> ItemModel | None:
-        async with self.rate_limiter:
-            async with self.session.get(f'item/{order.item_id}') as r:
-                r.raise_for_status()
-                item_resp = ItemResponse.model_validate(await r.json())
+        async with self.rate_limiter, self.session.get(f'item/{order.item_id}') as r:
+            r.raise_for_status()
+            item_resp = ItemResponse.model_validate(await r.json())
 
         if not item_resp.data or not item_resp.data.i18n.get('en'):
             return None
@@ -199,16 +198,15 @@ class OrderChecker:
 
         # Main loop
         while True:
-            async with self.rate_limiter:
-                # Get the list of orders
-                try:
-                    async with self.session.get(request) as r:
-                        r.raise_for_status()
-                        data = await r.json()
-                        orders_resp = OrdersItemTopResponse.model_validate(data)
-                except asyncio.TimeoutError:
-                    error(f'Request timed out for {item}. Continuing.')
-                    continue
+            # Get the list of orders
+            try:
+                async with self.rate_limiter, self.session.get(request) as r:
+                    if not r.ok:
+                        continue
+                    orders_resp = OrdersItemTopResponse.model_validate(await r.json())
+            except asyncio.TimeoutError:
+                error(f'Request timed out for {item}. Continuing.')
+                continue
 
             self.total += 1
 
