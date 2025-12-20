@@ -94,6 +94,7 @@ class OrderChecker:
         embed = (
             Embed(
                 title=title,
+                url=f'https://warframe.market/items/{item.slug}?type={order.type}',
                 color=WH_EMBED_COLOR,
                 timestamp=utcnow(),
             )
