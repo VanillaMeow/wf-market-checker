@@ -29,12 +29,13 @@ from .config import (
 from .models import Item as ItemModel
 from .models import Order, OrderWithUser
 from .responses import ItemResponse, OrdersItemTopResponse
-from .types import Item
 from .utils import clear_line, error, hex_to_embed_color
 
 if TYPE_CHECKING:
     from types import TracebackType
     from typing import Any, Self
+
+    from .types import Item
 
 
 # Constants
@@ -112,7 +113,7 @@ class OrderChecker:
             embed.add_field(name='Quantity', value=order.quantity, inline=True)
 
         data: dict[str, Any] = {
-            'content': content_fmt,
+            'content': PING_DISCORD_IDS_FMT,
             'embeds': [embed.to_dict()],
         }
 
@@ -156,14 +157,13 @@ class OrderChecker:
         # so we will schedule that in the background while we do other things
         item_model_task = asyncio.create_task(self.request_item_from_order(order))
 
-        self.found_orders_ids.add(order.id)
         self.play_sound()
 
         item_model = await item_model_task
 
         # Probably can't happen
         if item_model is None:
-            print(f'\r{Fore.RED}Bad data (invalid item).{Fore.RESET}', flush=True)
+            error('Bad data (invalid item).')
             return
 
         # Send webhook and copy to clipboard
@@ -201,7 +201,10 @@ class OrderChecker:
         while True:
             # Get the list of orders
             try:
-                async with self.rate_limiter, self.session.get(request) as r:
+                async with (
+                    self.rate_limiter,
+                    self.session.get(request, params=params) as r,
+                ):
                     if not r.ok:
                         continue
                     orders_resp = OrdersItemTopResponse.model_validate(await r.json())
@@ -227,6 +230,7 @@ class OrderChecker:
 
             # Completion logic
             if found_order:
+                self.found_orders_ids.add(found_order.id)
                 await self.accept_order(found_order)
                 break
 
