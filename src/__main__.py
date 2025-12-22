@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import traceback
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -117,8 +118,15 @@ class OrderChecker:
             'embeds': [embed.to_dict()],
         }
 
-        async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
-            r.raise_for_status()
+        try:
+            async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
+                r.raise_for_status()
+        except aiohttp.ServerDisconnectedError as e:
+            # Happens when quitting the script while the webhook is being sent
+            pass
+        except aiohttp.ClientError as e:
+            fmt = ''.join(traceback.format_tb(e.__traceback__))
+            print(f'\rFailed to send webhook: {e}\n{fmt}')
 
     def print_number_of_attempts(self) -> None:
         r_fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}'
