@@ -97,7 +97,7 @@ class OrderChecker:
 
         rank_fmt = f'(rank {order.rank})' if order.rank is not None else ''
         title = f'{item_en.name} {rank_fmt}'
-        icon_url = ASSETS_BASE_URL / (order.user.avatar or 'user/default-avatar.webp')
+        icon_url = ASSETS_BASE_URL.join(URL(order.user.avatar or 'user/default-avatar.webp'))
 
         embed = (
             Embed(
