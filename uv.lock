@@ -541,6 +541,7 @@ dependencies = [
     { name = "discord-py" },
     { name = "pydantic" },
     { name = "pyperclip" },
+    { name = "yarl" },
 ]
 
 [package.metadata]
@@ -551,6 +552,7 @@ requires-dist = [
     { name = "discord-py", specifier = ">=2.6.4" },
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pyperclip", specifier = ">=1.11.0" },
+    { name = "yarl", specifier = ">=1.22.0" },
 ]
 
 [package.metadata.requires-dev]

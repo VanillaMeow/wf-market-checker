@@ -18,6 +18,7 @@ from aiolimiter import AsyncLimiter
 from colorama import Fore
 from discord import Embed
 from discord.utils import utcnow
+from yarl import URL
 
 from .config import (
     CHECK_INTERVAL,
@@ -40,11 +41,16 @@ if TYPE_CHECKING:
 
 
 # Constants
-BASE_URL = 'https://api.warframe.market/v2/'
-ASSETS_BASE_URL = 'https://warframe.market/static/assets/'
+BASE_URL = URL('https://api.warframe.market/v2/')
+ASSETS_BASE_URL = URL('https://warframe.market/static/assets/')
+PROFILE_BASE_URL = URL('https://warframe.market/profile/')
+ITEMS_BASE_URL = URL('https://warframe.market/items/')
+
 HEADERS = {'accept': 'application/json', 'platform': 'pc', 'crossplay': 'true'}
 WH_HEADERS = {'accept': 'application/json'}
+
 WH_EMBED_COLOR = hex_to_embed_color('#e362ab')
+PING_DISCORD_IDS_FMT = ' '.join(f'<@{id}>' for id in PING_DISCORD_IDS)
 
 
 class OrderChecker:
@@ -89,21 +95,21 @@ class OrderChecker:
 
         item_en = item.i18n['en']
 
-        content_fmt = ' '.join(f'<@{id}>' for id in PING_DISCORD_IDS)
-        title = f'{item_en.name} (rank {order.rank})'
-        icon_url = ASSETS_BASE_URL + (order.user.avatar or 'user/default-avatar.webp')
+        rank_fmt = f'(rank {order.rank})' if order.rank is not None else ''
+        title = f'{item_en.name} {rank_fmt}'
+        icon_url = ASSETS_BASE_URL / (order.user.avatar or 'user/default-avatar.webp')
 
         embed = (
             Embed(
                 title=title,
-                url=f'https://warframe.market/items/{item.slug}?type={order.type}',
+                url=ITEMS_BASE_URL / item.slug % {'type': order.type},
                 color=WH_EMBED_COLOR,
                 timestamp=utcnow(),
             )
-            .set_thumbnail(url=ASSETS_BASE_URL + item_en.icon)
+            .set_thumbnail(url=ASSETS_BASE_URL / item_en.icon)
             .set_author(
                 name=order.user.ingame_name,
-                url=f'https://warframe.market/profile/{order.user.slug}',
+                url=PROFILE_BASE_URL / order.user.slug,
                 icon_url=icon_url,
             )
         )
@@ -202,8 +208,14 @@ class OrderChecker:
         Item
             The same item that was passed in.
         """
-        request = f'orders/item/{item.name}/top?rank={item.rank}'
+        request = f'orders/item/{item.name}/top'
         found_order: OrderWithUser | None = None
+
+        params: dict[str, int | str] = {}
+
+        # Add rank if specified
+        if item.rank is not None:
+            params['rank'] = item.rank
 
         # Main loop
         while True:
