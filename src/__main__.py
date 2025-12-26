@@ -14,6 +14,7 @@ import aiohttp
 import pyperclip
 from aiohttp import ClientTimeout
 from aiolimiter import AsyncLimiter
+from async_lru import alru_cache
 from colorama import Fore
 
 from . import utils
@@ -28,14 +29,13 @@ from .constants import (
     HEADERS,
     WH_HEADERS,
 )
-from .models import Item as ItemModel
-from .models import Order, OrderWithUser
 from .responses import ItemResponse, OrdersItemTopResponse
 
 if TYPE_CHECKING:
     from types import TracebackType
     from typing import Self
 
+    from .models import Item as ItemModel, OrderWithUser
     from .types import Item
 
 
@@ -76,10 +76,11 @@ class OrderChecker:
             self.wh_session = wh_session
             self.rate_limiter = AsyncLimiter(max_rate=3, time_period=1)
 
+            asyncio.create_task(self._warmup_cache())
+
             try:
                 await self.schedule_tasks()
             except (asyncio.CancelledError, KeyboardInterrupt):
-                # Notify user
                 utils.clear_line()
                 print(f'\r{Fore.RED}Exiting...{Fore.RESET}', end='\n', flush=True)
 
@@ -148,9 +149,12 @@ class OrderChecker:
                     self.rate_limiter,
                     self.session.get(request, params=params) as r,
                 ):
-                    if not r.ok:
-                        continue
+                    r.raise_for_status()
                     orders_resp = OrdersItemTopResponse.model_validate(await r.json())
+
+            except aiohttp.ClientError as e:
+                utils.error(f'Failed to get orders for {item}: {e}')
+                continue
             except asyncio.TimeoutError:
                 utils.error(f'Request timed out for {item}. Continuing.')
                 continue
@@ -209,9 +213,11 @@ class OrderChecker:
         order : OrderWithUser
             The accepted order.
         """
+        loop = asyncio.get_running_loop()
+
         # An extra api request is needed to get the item name
         # so we will schedule that in the background while we do other things
-        item_model_task = asyncio.create_task(self.request_item_from_order(order))
+        item_model_task = loop.create_task(self.request_item_from_id(order.item_id))
 
         utils.play_sound(SOUND)
 
@@ -224,13 +230,16 @@ class OrderChecker:
 
         # Send webhook and copy to clipboard
         fmt = self.format_buy_message(order, item_model)
-        asyncio.create_task(self.notify_webhook(order, item_model))
+        loop.create_task(self.notify_webhook(order, item_model))
         pyperclip.copy(fmt)
 
         print(f'\r{fmt}', flush=True)
 
-    async def request_item_from_order(self, order: Order, /) -> ItemModel | None:
-        async with self.rate_limiter, self.session.get(f'item/{order.item_id}') as r:
+    @alru_cache(maxsize=None)
+    async def request_item_from_id(self, item_id: str, /) -> ItemModel | None:
+        sys.stdout.write(f'\rCaching item {Fore.CYAN}{item_id}{Fore.RESET}.')
+
+        async with self.rate_limiter, self.session.get(f'item/{item_id}') as r:
             r.raise_for_status()
             item_resp = ItemResponse.model_validate(await r.json())
 
@@ -249,12 +258,14 @@ class OrderChecker:
         try:
             async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
                 r.raise_for_status()
-        except aiohttp.ServerDisconnectedError as e:
+        except aiohttp.ServerDisconnectedError:
             # Happens when quitting the script while the webhook is being sent
-            pass
+            return
         except aiohttp.ClientError as e:
             fmt = ''.join(traceback.format_tb(e.__traceback__))
             print(f'\rFailed to send webhook: {e}\n{fmt}')
+        except asyncio.TimeoutError:
+            utils.error('Webhook notification request timed out.')
 
     def format_buy_message(self, order: OrderWithUser, item: ItemModel) -> str:
         item_name = item.i18n['en'].name
@@ -270,7 +281,29 @@ class OrderChecker:
 
     def print_number_of_attempts(self) -> None:
         r_fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}'
-        print(r_fmt, end='', flush=True)
+        sys.stdout.write(r_fmt)
+
+    async def _warmup_cache(self) -> None:
+        loop = asyncio.get_running_loop()
+
+        # First we need to convert from ItemModel.slug to ItemModel.id
+        # Item.name is equivalent to ItemModel.slug
+        item_ids: list[str] = [
+            item_model.id
+            for item_model in await asyncio.gather(
+                *(
+                    loop.create_task(
+                        self.request_item_from_id.__wrapped__(self, item.name)
+                    )
+                    for item in ITEMS
+                )
+            )
+            if item_model is not None
+        ]
+
+        # Finally we can warm up the cache
+        for item_id in item_ids:
+            loop.create_task(self.request_item_from_id(item_id))
 
 
 async def init_checks() -> None:
