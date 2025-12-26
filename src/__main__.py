@@ -77,7 +77,7 @@ class OrderChecker:
             self.wh_session = wh_session
             self.rate_limiter = AsyncLimiter(max_rate=3, time_period=1)
 
-            asyncio.create_task(self._warmup_cache())
+            await self._warmup_item_cache()
 
             try:
                 await self.schedule_tasks()
@@ -284,7 +284,7 @@ class OrderChecker:
         r_fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}'
         sys.stdout.write(r_fmt)
 
-    async def _warmup_cache(self) -> None:
+    async def _warmup_item_cache(self) -> None:
         loop = asyncio.get_running_loop()
 
         # First we need to convert from ItemModel.slug to ItemModel.id
@@ -303,8 +303,11 @@ class OrderChecker:
         ]
 
         # Finally we can warm up the cache
-        for item_id in item_ids:
-            loop.create_task(self.request_item_from_id(item_id))
+        tasks = [
+            loop.create_task(self.request_item_from_id(item_id)) for item_id in item_ids
+        ]
+        await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+        utils.clear_line()  # Prevent overlap
 
 
 async def init_checks() -> None:
