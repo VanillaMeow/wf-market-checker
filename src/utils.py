@@ -18,12 +18,34 @@ from src.constants import (
 )
 
 from .config import DO_AUDIO_NOTIFICATION
-from .models import Item as ItemModel
-from .models import OrderWithUser
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any
+    from typing import Any, Callable
+
+    from .models import Item as ItemModel, OrderWithUser
+
+
+# pylint: disable=import-error
+if sys.platform == 'win32':
+    import msvcrt
+
+    get_ch: Callable[None, str] = msvcrt.getwch
+    get_ch.__doc__ = 'Read a single character from standard input.'
+else:
+    import termios
+    import tty
+
+    def get_ch() -> str:
+        """Read a single character from standard input."""
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            return sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+# pylint: enable=import-error
 
 
 def clear_line() -> None:
@@ -34,7 +56,7 @@ def clear_line() -> None:
 def error(message: str, /) -> None:
     """Prints an error message to the console."""
     clear_line()
-    print(f'\r{Fore.RED}{message}{Fore.RESET}', end='\n', flush=True)
+    print(f'\r{Fore.RED}{message}{Fore.RESET}', flush=True)
 
 
 def play_sound(sound: Path, /) -> None:

@@ -7,6 +7,7 @@ and prints the message to the console.
 from __future__ import annotations
 
 import asyncio
+import sys
 import traceback
 from typing import TYPE_CHECKING
 
@@ -307,10 +308,19 @@ class OrderChecker:
 
 
 async def init_checks() -> None:
-    pass
+    if WEBHOOK_URL and WEBHOOK_URL.endswith('REPLACE_WITH_ACTUAL_WEBHOOK'):
+        m = (
+            f'{Fore.RED}Missing webhook url. {Fore.RESET}Please set it in {Fore.MAGENTA}src/config.py{Fore.RESET}.\n'
+            f'{Fore.LIGHTBLACK_EX}Press any key to exit...{Fore.RESET}'
+        )
+        print(m)
+        utils.get_ch()  # Block until a key is pressed
+        sys.exit(1)
 
 
 async def main() -> None:
+    await init_checks()
+
     async with OrderChecker() as checker:
         await checker.run()
 
