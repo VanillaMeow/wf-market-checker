@@ -31,7 +31,6 @@ if sys.platform == 'win32':
     import msvcrt
 
     get_ch: Callable[None, str] = msvcrt.getwch
-    get_ch.__doc__ = 'Read a single character from standard input.'
 else:
     import termios
     import tty
