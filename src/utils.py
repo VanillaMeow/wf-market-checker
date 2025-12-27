@@ -49,7 +49,8 @@ else:
 
 def clear_line() -> None:
     """Clears the current line in the terminal."""
-    sys.stdout.write('\x1b[2K')
+    sys.stdout.write('\x1b[2K\r')
+    sys.stdout.flush()
 
 
 def error(message: str, /) -> None:
