@@ -238,7 +238,7 @@ class OrderChecker:
 
     @alru_cache(maxsize=None)
     async def request_item_from_id(self, item_id: str, /) -> ItemModel | None:
-        sys.stdout.write(f'\rCaching item {Fore.CYAN}{item_id}{Fore.RESET}.')
+        print(f'\rCaching item {Fore.CYAN}{item_id}{Fore.RESET}.', end='', flush=True)
 
         async with self.rate_limiter, self.session.get(f'item/{item_id}') as r:
             r.raise_for_status()
@@ -281,24 +281,23 @@ class OrderChecker:
         return fmt
 
     def print_number_of_attempts(self) -> None:
-        r_fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}'
-        sys.stdout.write(r_fmt)
+        fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}\r'
+        sys.stdout.write(fmt)
+        sys.stdout.flush()
 
     async def _warmup_item_cache(self) -> None:
         loop = asyncio.get_running_loop()
 
         # First we need to convert from ItemModel.slug to ItemModel.id
         # Item.name is equivalent to ItemModel.slug
+        tasks = [
+            loop.create_task(self.request_item_from_id.__wrapped__(self, item.name))
+            for item in ITEMS
+        ]
+
         item_ids: list[str] = [
             item_model.id
-            for item_model in await asyncio.gather(
-                *(
-                    loop.create_task(
-                        self.request_item_from_id.__wrapped__(self, item.name)
-                    )
-                    for item in ITEMS
-                )
-            )
+            for item_model in await asyncio.gather(*tasks)
             if item_model is not None
         ]
 
@@ -313,7 +312,8 @@ class OrderChecker:
 async def init_checks() -> None:
     if WEBHOOK_URL and WEBHOOK_URL.endswith('REPLACE_WITH_ACTUAL_WEBHOOK'):
         m = (
-            f'{Fore.RED}Missing webhook url. {Fore.RESET}Please set it in {Fore.MAGENTA}src/config.py{Fore.RESET}.\n'
+            f'{Fore.RED}Missing webhook url. {Fore.RESET}'
+            f'Please set it in {Fore.MAGENTA}src/config.py{Fore.RESET}.\n'
             f'{Fore.LIGHTBLACK_EX}Press any key to exit...{Fore.RESET}'
         )
         print(m)
