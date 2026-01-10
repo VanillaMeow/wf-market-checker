@@ -217,12 +217,8 @@ class OrderChecker:
         loop = asyncio.get_running_loop()
 
         # An extra api request is needed to get the item name
-        # so we will schedule that in the background while we do other things
-        item_model_task = loop.create_task(self.request_item_from_id(order.item_id))
-
-        utils.play_sound(SOUND)
-
-        item_model = await item_model_task
+        # But we already have it pre-cached on startup so let's use that
+        item_model = await self.request_item_from_id(order.item_id)
 
         # Probably can't happen
         if item_model is None:
@@ -230,6 +226,7 @@ class OrderChecker:
             return
 
         # Send webhook and copy to clipboard
+        utils.play_sound(SOUND)
         fmt = self.format_buy_message(order, item_model)
         loop.create_task(self.notify_webhook(order, item_model))
         pyperclip.copy(fmt)
