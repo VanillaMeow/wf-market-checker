@@ -1,3 +1,7 @@
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
 [project]
 name = "wf-market-checker"
 version = "0.1.0"
@@ -12,11 +16,15 @@ dependencies = [
     "discord-py>=2.6.4",
     "pydantic>=2.12.4",
     "pyperclip>=1.11.0",
+    "tomli>=2.4.0",
     "yarl>=1.22.0",
 ]
 
 [dependency-groups]
 dev = ["ruff>=0.14.11"]
+
+[project.scripts]
+app = "wf_market_checker.__main__:main"
 
 [tool.pyright]
 typeCheckingMode = "strict"

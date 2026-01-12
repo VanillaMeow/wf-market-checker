@@ -9,15 +9,14 @@ from discord import Embed
 from discord.utils import utcnow
 from yarl import URL
 
-from src.constants import (
+from .config import DO_AUDIO_NOTIFICATION
+from .constants import (
     ASSETS_BASE_URL,
     ITEMS_BASE_URL,
     PING_DISCORD_IDS_FMT,
     PROFILE_BASE_URL,
     WH_EMBED_COLOR,
 )
-
-from .config import DO_AUDIO_NOTIFICATION
 
 if TYPE_CHECKING:
     from collections.abc import Callable

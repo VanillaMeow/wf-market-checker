@@ -28,12 +28,16 @@ async def init_checks() -> None:
         sys.exit(1)
 
 
-async def main() -> None:
+async def _main() -> None:
     await init_checks()
 
     async with OrderChecker() as checker:
         await checker.run()
 
 
+def main() -> None:
+    asyncio.run(_main())
+
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
