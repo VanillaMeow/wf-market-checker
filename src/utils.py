@@ -70,6 +70,18 @@ def play_sound(sound: Path, /) -> None:
     )
 
 
+def format_buy_message(order: OrderWithUser, item: ItemModel) -> str:
+    item_name = item.i18n['en'].name
+
+    # Make format
+    rank_fmt = f' (rank {order.rank})' if order.rank is not None else ''
+    return (
+        f'/w {order.user.ingame_name} Hi! '
+        f'I want to buy: "{item_name}{rank_fmt}" '
+        f'for {order.platinum} platinum. (warframe.market)'
+    )
+
+
 def create_webhook_data(item: ItemModel, order: OrderWithUser) -> dict[str, Any]:
     """Creates the data to be sent to the webhook, including the embed.
 
