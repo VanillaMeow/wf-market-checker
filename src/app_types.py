@@ -9,6 +9,7 @@ class Item(NamedTuple):
     quantity_min: int = -1
     rank: int | None = None
 
+
 class FoundOrder(NamedTuple):
     id: str
     price: int

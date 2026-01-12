@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -78,7 +80,6 @@ class UserShort(BaseModel):
     ingame_name: str = Field(alias='ingameName')
     avatar: str | None = None
     slug: str = ''
-    avatar: str | None = None
     reputation: int
     locale: str
     platform: str

@@ -20,13 +20,13 @@ from src.constants import (
 from .config import DO_AUDIO_NOTIFICATION
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
-    from typing import Any, Callable
+    from typing import Any
 
     from .models import Item as ItemModel, OrderWithUser
 
 
-# pylint: disable=import-error
 if sys.platform == 'win32':
     import msvcrt
 
@@ -44,7 +44,6 @@ else:
             return sys.stdin.read(1)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
-# pylint: enable=import-error
 
 
 def clear_line() -> None:

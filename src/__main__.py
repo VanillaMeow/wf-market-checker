@@ -1,7 +1,7 @@
 """
 This script monitors warframe.market for items listed below a specified price threshold.
-When a suitable order is found, it plays a sound, copies a whisper message to the clipboard,
-and prints the message to the console.
+When a suitable order is found, it sends a discord webhook notification,
+copies a whisper message to the clipboard and prints the message to the console.
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Self
 
+    from .app_types import Item
     from .models import Item as ItemModel, OrderWithUser
-    from .types import Item
 
 
 class OrderChecker:
@@ -94,8 +94,9 @@ class OrderChecker:
         """Schedules async tasks for checking orders.
 
         Each task continuously checks one individual item from the global `ITEMS` list.
-        When an individual task finds a suitable order, it returns out and is considered finished.
-        We then rescheduled the same item in another task to continue monitoring it.
+        When an individual task finds a suitable order,it returns out and is considered
+        finished. We then rescheduled the same item in another task to continue
+        monitoring it.
         """
 
         def add_task(item: Item) -> None:
@@ -156,7 +157,7 @@ class OrderChecker:
             except aiohttp.ClientError as e:
                 utils.error(f'Failed to get orders for {item}: {e}')
                 continue
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 utils.error(f'Request timed out for {item}. Continuing.')
                 continue
 
@@ -262,7 +263,7 @@ class OrderChecker:
         except aiohttp.ClientError as e:
             fmt = ''.join(traceback.format_tb(e.__traceback__))
             print(f'\rFailed to send webhook: {e}\n{fmt}')
-        except asyncio.TimeoutError:
+        except TimeoutError:
             utils.error('Webhook notification request timed out.')
 
     def format_buy_message(self, order: OrderWithUser, item: ItemModel) -> str:
@@ -270,12 +271,11 @@ class OrderChecker:
 
         # Make format
         rank_fmt = f' (rank {order.rank})' if order.rank is not None else ''
-        fmt = (
+        return (
             f'/w {order.user.ingame_name} Hi! '
             f'I want to buy: "{item_name}{rank_fmt}" '
             f'for {order.platinum} platinum. (warframe.market)'
         )
-        return fmt
 
     def print_number_of_attempts(self) -> None:
         fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}\r'
