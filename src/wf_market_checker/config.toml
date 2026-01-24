@@ -1,0 +1,11 @@
+#:schema ./config.schema.json
+
+do-audio-notification = false
+check-interval = 1.0
+webhook-url = "https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK"
+ping-discord-ids = []
+
+[[items]]
+name = "molt_augmented"
+price-threshold = 999
+rank = 5

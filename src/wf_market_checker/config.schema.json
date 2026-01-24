@@ -1,0 +1,66 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "App Config",
+    "type": "object",
+
+    "properties": {
+        "do-audio-notification": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to play an audio notification"
+        },
+        "check-interval": {
+            "type": "number",
+            "default": 1,
+            "description": "Interval in seconds between checks"
+        },
+        "webhook-url": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "default": null,
+            "description": "Discord webhook URL for notifications"
+        },
+        "ping-discord-ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "default": [],
+            "description": "Discord user IDs to ping"
+        },
+        "items": {
+            "type": "array",
+            "description": "Items to track",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "price-threshold": {
+                        "type": "integer"
+                    },
+                    "quantity-min": {
+                        "type": "integer",
+                        "default": -1
+                    },
+                    "rank": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": null
+                    }
+                },
+                "required": [
+                    "name",
+                    "price-threshold"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": true
+}

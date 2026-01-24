@@ -4,6 +4,7 @@
         "crossplay",
         "cvlc",
         "ingame",
+        "rtoml",
         "warframe"
-    ]
+    ],
 }
