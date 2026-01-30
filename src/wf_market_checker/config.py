@@ -30,12 +30,12 @@ if TYPE_CHECKING:
 
 # Config static
 SRC_PATH = Path(__file__).parent.absolute()
+TEMPLATES_DIR = SRC_PATH / 'templates'
 CONFIG_DIR = Path(platformdirs.user_config_dir('wf-market-checker'))
 CONFIG_PATH = CONFIG_DIR / 'config.toml'
 SOUND = SRC_PATH / 'assets' / 'cash.ogg'
 
 # Constants
-SCHEMA_COMMENT = '#:schema ./config.schema.json\n\n'
 PLACEHOLDER_WH_URL = 'https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK'
 
 
@@ -64,10 +64,14 @@ class Config(BaseModel):
         """Load config from TOML, merge with defaults, and write back if changed."""
         defaults = cls()
 
+        # Copy all templates if config doesn't exist
         if not path.exists():
-            defaults.save(path)
-            return defaults
+            cls._copy_templates(path.parent)
+        else:
+            # Restore any missing template files
+            cls._copy_missing_templates(path.parent)
 
+        # Read and parse config
         text = path.read_text(encoding='utf-8')
         doc = tomlkit.parse(text)
         existing = doc.unwrap()
@@ -81,6 +85,21 @@ class Config(BaseModel):
             config.save(path, doc)
 
         return config
+
+    @staticmethod
+    def _copy_templates(dest: Path) -> None:
+        """Copy all template files to the config directory."""
+        dest.mkdir(parents=True, exist_ok=True)
+        for template in TEMPLATES_DIR.iterdir():
+            template.copy_into(dest)
+
+    @staticmethod
+    def _copy_missing_templates(dest: Path) -> None:
+        """Copy any missing template files to the config directory."""
+        for template in TEMPLATES_DIR.iterdir():
+            dest_file = dest / template.name
+            if not dest_file.exists():
+                template.copy_into(dest)
 
     @staticmethod
     def _merge_with_defaults(
@@ -121,13 +140,8 @@ class Config(BaseModel):
 
         self._sync_doc(doc, data)
 
-        content = doc.as_string()
-        if not content.startswith('#:schema'):
-            content = SCHEMA_COMMENT + content
-
-        # Write to config dir
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding='utf-8')
+        path.write_text(doc.as_string(), encoding='utf-8')
 
 
 def load_config() -> Config:
