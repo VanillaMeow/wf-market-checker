@@ -5,6 +5,7 @@ from yarl import URL
 from .config import PING_DISCORD_IDS
 
 BASE_URL = URL('https://api.warframe.market/v2/')
+BASE_URL_V1 = URL('https://api.warframe.market/v1/')
 ASSETS_BASE_URL = URL('https://warframe.market/static/assets/')
 PROFILE_BASE_URL = URL('https://warframe.market/profile/')
 ITEMS_BASE_URL = URL('https://warframe.market/items/')

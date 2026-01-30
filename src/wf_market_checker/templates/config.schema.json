@@ -40,7 +40,15 @@
                         "type": "string"
                     },
                     "price-threshold": {
-                        "type": "integer"
+                        "oneOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "string",
+                                "enum": ["6h", "12h", "1h"]
+                            }
+                        ]
                     },
                     "quantity-min": {
                         "type": "integer",

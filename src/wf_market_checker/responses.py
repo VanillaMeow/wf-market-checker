@@ -10,7 +10,7 @@ from .models import Item, OrderWithUser
 
 
 class BaseResponse(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     api_version: str = Field(alias='apiVersion')
     data: Any | None = None

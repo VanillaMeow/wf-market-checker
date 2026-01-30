@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ItemI18n(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     name: str
     icon: str
@@ -17,7 +17,7 @@ class ItemI18n(BaseModel):
 
 
 class Item(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     id: str
     slug: str
@@ -46,7 +46,7 @@ class Item(BaseModel):
 
 
 class ItemShort(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     id: str
     slug: str
@@ -66,7 +66,7 @@ class ItemShort(BaseModel):
 
 
 class Activity(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     type: str
     details: str | None = None
@@ -74,7 +74,7 @@ class Activity(BaseModel):
 
 
 class UserShort(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     id: str
     ingame_name: str = Field(alias='ingameName')
@@ -90,7 +90,7 @@ class UserShort(BaseModel):
 
 
 class Order(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
     id: str
     type: str

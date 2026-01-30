@@ -6,9 +6,12 @@ from __future__ import annotations
 
 __all__ = ('OrderChecker',)
 
+
 import asyncio
 import sys
 import traceback
+from copy import copy
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -19,6 +22,7 @@ from async_lru import alru_cache
 from colorama import Fore
 
 from . import utils
+from .app_types import AUTO_PRICE_TO_SECONDS_MAP, AutoPrice, Item
 from .config import (
     CHECK_INTERVAL,
     ITEMS,
@@ -27,32 +31,36 @@ from .config import (
 )
 from .constants import (
     BASE_URL,
+    BASE_URL_V1,
     HEADERS,
     WH_HEADERS,
 )
 from .responses import ItemResponse, OrdersItemTopResponse
+from .v1_responses import StatisticsResponse
 
 if TYPE_CHECKING:
     from types import TracebackType
     from typing import Self
 
-    from .app_types import Item
     from .models import Item as ItemModel, OrderWithUser
 
 
 class OrderChecker:
     wh_session: aiohttp.ClientSession
     session: aiohttp.ClientSession
+    v1_session: aiohttp.ClientSession
     rate_limiter: AsyncLimiter
 
     def __init__(self):
         self.order_tasks: set[asyncio.Task[Item]] = set()
+        self.auto_price_tasks: set[asyncio.Task[None]] = set()
         self.total: int = 0
 
         # This memory leaks out the wazoo
         self.found_orders_ids: set[str] = set()
 
     async def __aenter__(self) -> Self:
+        await self.start()
         return self
 
     async def __aexit__(
@@ -61,34 +69,64 @@ class OrderChecker:
         _exc_value: BaseException | None,
         _exc_tb: TracebackType | None,
     ) -> None:
-        return None
+        await self.stop()
+
+    async def start(self) -> None:
+        self.session = aiohttp.ClientSession(
+            base_url=BASE_URL, headers=HEADERS, timeout=ClientTimeout(total=10)
+        )
+        self.v1_session = aiohttp.ClientSession(
+            base_url=BASE_URL_V1, headers=HEADERS, timeout=ClientTimeout(total=10)
+        )
+        self.wh_session = aiohttp.ClientSession(
+            headers=WH_HEADERS, timeout=ClientTimeout(total=10)
+        )
+        self.rate_limiter = AsyncLimiter(max_rate=3, time_period=1)
+
+    async def stop(self) -> None:
+        await self.session.close()
+        await self.v1_session.close()
+        await self.wh_session.close()
 
     async def run(self) -> None:
-        async with (
-            aiohttp.ClientSession(
-                base_url=BASE_URL, headers=HEADERS, timeout=ClientTimeout(total=10)
-            ) as session,
-            aiohttp.ClientSession(
-                headers=WH_HEADERS,
-                timeout=ClientTimeout(total=10),
-            ) as wh_session,
-        ):
-            self.session = session
-            self.wh_session = wh_session
-            self.rate_limiter = AsyncLimiter(max_rate=3, time_period=1)
+        await self._warmup_item_cache()
 
-            await self._warmup_item_cache()
+        try:
+            await self.schedule_tasks()
+        except asyncio.CancelledError, KeyboardInterrupt:
+            utils.clear_line()
+            print(f'\r{Fore.RED}Exiting...{Fore.RESET}', end='\n', flush=True)
+
+        finally:
+            # Cancel all tasks
+            for task in self.order_tasks:
+                task.cancel()
+
+    async def check_auto_price(self, item: Item, auto_price: AutoPrice) -> None:
+        """Periodically updates item.price_threshold based on market statistics.
+
+        Fetches statistics from the v1 API and calculates the average price
+        from entries within the specified time window.
+        """
+        time_window_seconds = AUTO_PRICE_TO_SECONDS_MAP[auto_price]
+
+        while True:
+            new_price = await self._fetch_auto_price(item, time_window_seconds)
+            if new_price is None:
+                continue
+
+            item.price_threshold = new_price
+            m = (
+                f'\r{Fore.BLUE}⚠️{Fore.RESET} Updated price threshold for {Fore.CYAN}{item.name}{Fore.RESET} '
+                f'to {Fore.MAGENTA}{new_price}{Fore.RESET}.'
+            )
+            utils.clear_line()
+            print(m)
 
             try:
-                await self.schedule_tasks()
-            except asyncio.CancelledError, KeyboardInterrupt:
-                utils.clear_line()
-                print(f'\r{Fore.RED}Exiting...{Fore.RESET}', end='\n', flush=True)
-
-            finally:
-                # Cancel all tasks
-                for task in self.order_tasks:
-                    task.cancel()
+                await asyncio.sleep(time_window_seconds)
+            except asyncio.CancelledError:
+                break
 
     async def schedule_tasks(self) -> None:
         """Schedules async tasks for checking orders.
@@ -99,14 +137,36 @@ class OrderChecker:
         monitoring it.
         """
 
-        def add_task(item: Item) -> None:
+        def add_auto_price_task(item: Item, auto_price: AutoPrice) -> None:
+            task = asyncio.create_task(self.check_auto_price(item, auto_price))
+            task.add_done_callback(self.auto_price_tasks.discard)
+            self.auto_price_tasks.add(task)
+
+        def add_order_task(item: Item) -> None:
             task = asyncio.create_task(self.check_orders(item))
             task.add_done_callback(self.order_tasks.discard)
             self.order_tasks.add(task)
 
         # Create initial tasks
-        for item in ITEMS:
-            add_task(item)
+        for config_item in ITEMS:
+            # First we need to convert from CofigItem to Item
+            i = Item(
+                name=config_item.name,
+                price_threshold=0,  # We'll set this later
+                quantity_min=config_item.quantity_min,
+                rank=config_item.rank,
+            )
+
+            # Check if we are using AutoPrice
+            config_price = config_item.price_threshold
+            if isinstance(config_price, AutoPrice):
+                auto_price = copy(config_price)
+                add_auto_price_task(i, auto_price)  # type: ignore[]
+            else:
+                i.price_threshold = config_price
+
+            # Finally we can add the task
+            add_order_task(i)
 
         # Schedule loop
         while self.order_tasks:
@@ -119,7 +179,7 @@ class OrderChecker:
             # it is done to potentially allow more control about what tasks are repeated
             for task in done:
                 item = await task
-                add_task(item)
+                add_order_task(item)
 
     async def check_orders(self, item: Item) -> Item:
         """The individual task that checks current orders for the specified item.
@@ -273,6 +333,56 @@ class OrderChecker:
         fmt = f'\rTotal requests: {Fore.CYAN}{self.total}{Fore.RESET}\r'
         sys.stdout.write(fmt)
         sys.stdout.flush()
+
+    async def _fetch_auto_price(
+        self, item: Item, time_window_seconds: int
+    ) -> int | None:
+        """Fetch statistics and calculate the average price for the time window.
+
+        Returns the calculated price as an integer, or None if unavailable.
+        """
+        request = f'items/{item.name}/statistics'
+
+        try:
+            async with (
+                self.rate_limiter,
+                self.v1_session.get(request) as r,
+            ):
+                r.raise_for_status()
+                statistics_resp = StatisticsResponse.model_validate_json(await r.read())
+
+        except aiohttp.ClientError as e:
+            utils.error(f'Failed to get statistics for {item.name}: {e}')
+            return None
+        except TimeoutError:
+            utils.error(f'Statistics request timed out for {item.name}.')
+            return None
+
+        # Filter entries within the time window
+        now = datetime.now(UTC)
+        cutoff = now.timestamp() - time_window_seconds
+
+        # Use live sell statistics from the 48h window
+        statistics = statistics_resp.payload.statistics_closed
+
+        entries = statistics.get_ranked_entries(
+            statistics.hours_48,
+            mod_rank=item.rank or 0,
+        )
+
+        # Filter to entries within our time window
+        filtered = [e for e in entries if e.datetime.timestamp() >= cutoff]
+
+        if not filtered:
+            utils.error(f'No statistics entries found for {item.name} in time window.')
+            return None
+
+        # Calculate average from avg_price
+        avg = sum(e.moving_avg for e in filtered) / len(filtered)
+
+        # TODO(leah): make configurable
+        profit_margin_percent = 30
+        return round(avg * (1 - profit_margin_percent / 100))
 
     async def _warmup_item_cache(self) -> None:
         loop = asyncio.get_running_loop()

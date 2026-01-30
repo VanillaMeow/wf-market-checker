@@ -20,7 +20,7 @@ git clone https://github.com/VanillaMeow/wf-market-checker.git
 cd wf-market-checker
 
 # Edit the config file to match your needs
-code ./src/wf_market_checker/config.py
+code ./src/wf_market_checker/config.toml
 
 # Finally, run the app
 uv run app

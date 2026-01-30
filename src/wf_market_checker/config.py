@@ -13,10 +13,11 @@ __all__ = (
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
+import platformdirs
 import tomlkit
 from pydantic import BaseModel, ConfigDict, Field
 
-from .app_types import Item
+from .app_types import AutoPrice
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
@@ -29,12 +30,22 @@ if TYPE_CHECKING:
 
 # Config static
 SRC_PATH = Path(__file__).parent.absolute()
-CONFIG_PATH = SRC_PATH / 'config.toml'
+CONFIG_DIR = Path(platformdirs.user_config_dir('wf-market-checker'))
+CONFIG_PATH = CONFIG_DIR / 'config.toml'
 SOUND = SRC_PATH / 'assets' / 'cash.ogg'
 
 # Constants
 SCHEMA_COMMENT = '#:schema ./config.schema.json\n\n'
 PLACEHOLDER_WH_URL = 'https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK'
+
+
+class ConfigItem(BaseModel):
+    model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
+
+    name: str
+    price_threshold: int | AutoPrice = Field(alias='price-threshold')
+    quantity_min: int = Field(default=-1, alias='quantity-min')
+    rank: int | None = None
 
 
 class Config(BaseModel):
@@ -46,7 +57,7 @@ class Config(BaseModel):
     ping_discord_ids: set[int] = Field(
         default_factory=set[int], alias='ping-discord-ids'
     )
-    items: set[Item] = Field(default_factory=set[Item])
+    items: list[ConfigItem] = Field(default_factory=list[ConfigItem])
 
     @classmethod
     def load(cls, path: Path = CONFIG_PATH) -> Self:
@@ -114,6 +125,8 @@ class Config(BaseModel):
         if not content.startswith('#:schema'):
             content = SCHEMA_COMMENT + content
 
+        # Write to config dir
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding='utf-8')
 
 
@@ -128,4 +141,4 @@ DO_AUDIO_NOTIFICATION: bool = _config.do_audio_notification
 CHECK_INTERVAL: float = _config.check_interval
 WEBHOOK_URL: str = _config.webhook_url
 PING_DISCORD_IDS: set[int] = _config.ping_discord_ids
-ITEMS: set[Item] = _config.items
+ITEMS: list[ConfigItem] = _config.items

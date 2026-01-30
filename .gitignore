@@ -217,3 +217,9 @@ __marimo__/
 
 ### Project Specific
 _dev/
+
+# AI junk
+.claude/
+CLAUDE.md
+.gemini/
+GEMINI.md

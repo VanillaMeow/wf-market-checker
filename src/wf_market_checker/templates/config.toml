@@ -7,5 +7,6 @@ ping-discord-ids = []
 
 [[items]]
 name = "molt_augmented"
-price-threshold = 999
+price-threshold = '1h'
 rank = 5
+quantity-min = -1
