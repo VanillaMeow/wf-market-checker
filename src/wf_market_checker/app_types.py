@@ -25,6 +25,7 @@ class Item(BaseModel):
     price_threshold: int
     quantity_min: int = -1
     rank: int | None = None
+    profit_margin_percent: int = 30
 
 
 # TODO(leah): implement later to allow for invaliding orders that changed price

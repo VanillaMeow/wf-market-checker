@@ -112,8 +112,10 @@ class OrderChecker:
 
             item.price_threshold = new_price
             m = (
-                f'\r{Fore.BLUE}⚠️{Fore.RESET} Updated price threshold for {Fore.CYAN}{item.name}{Fore.RESET} '
-                f'to {Fore.MAGENTA}{new_price}{Fore.RESET}.'
+                f'\r{Fore.BLUE}⚠️{Fore.RESET} Updated price threshold for '
+                f'{Fore.CYAN}{item.name}{Fore.RESET} '
+                f'to {Fore.MAGENTA}{new_price}{Fore.RESET} '
+                f'({Fore.LIGHTBLACK_EX}{item.profit_margin_percent}% profit margin{Fore.RESET}).'
             )
             utils.clear_line()
             print(m)
@@ -150,6 +152,7 @@ class OrderChecker:
                 price_threshold=0,  # We'll set this later
                 quantity_min=config_item.quantity_min,
                 rank=config_item.rank,
+                profit_margin_percent=config_item.profit_margin_percent,
             )
 
             # Check if we are using AutoPrice
@@ -377,9 +380,7 @@ class OrderChecker:
         # Calculate average from avg_price
         avg = sum(e.moving_avg for e in filtered) / len(filtered)
 
-        # TODO(leah): make configurable
-        profit_margin_percent = 30
-        return round(avg * (1 - profit_margin_percent / 100))
+        return round(avg * (1 - item.profit_margin_percent / 100))
 
     async def _warmup_item_cache(self) -> None:
         loop = asyncio.get_running_loop()

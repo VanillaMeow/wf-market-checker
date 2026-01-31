@@ -60,6 +60,13 @@
                             "null"
                         ],
                         "default": null
+                    },
+                    "profit-margin-percent": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": 30
                     }
                 },
                 "required": [

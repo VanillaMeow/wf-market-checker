@@ -46,6 +46,7 @@ class ConfigItem(BaseModel):
     price_threshold: int | AutoPrice = Field(alias='price-threshold')
     quantity_min: int = Field(default=-1, alias='quantity-min')
     rank: int | None = None
+    profit_margin_percent: int = Field(default=30, alias='profit-margin-percent')
 
 
 class Config(BaseModel):
