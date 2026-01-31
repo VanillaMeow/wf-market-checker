@@ -2,11 +2,11 @@
 
 do-audio-notification = false
 check-interval = 1.0
-webhook-url = "https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK"
+webhook-url = 'https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK'
 ping-discord-ids = []
 
 [[items]]
-name = "molt_augmented"
+name = 'molt_augmented'
 price-threshold = '1h'
 rank = 5
 quantity-min = -1
