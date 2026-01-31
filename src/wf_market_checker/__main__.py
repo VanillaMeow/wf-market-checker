@@ -12,12 +12,13 @@ import sys
 from colorama import Fore
 
 from . import utils
-from .config import CONFIG_PATH, WEBHOOK_URL
+from .config import CONFIG_PATH, config
 from .order_checker import OrderChecker
 
 
 async def init_checks() -> None:
-    if WEBHOOK_URL and WEBHOOK_URL.endswith('REPLACE_WITH_ACTUAL_WEBHOOK'):
+    url = config.webhook_url
+    if url and url.endswith('REPLACE_WITH_ACTUAL_WEBHOOK'):
         m = (
             f'{Fore.RED}Missing webhook url. {Fore.RESET}'
             f'Please set it in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n'

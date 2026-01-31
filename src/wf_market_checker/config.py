@@ -1,13 +1,9 @@
 from __future__ import annotations
 
 __all__ = (
-    'CHECK_INTERVAL',
-    'DO_AUDIO_NOTIFICATION',
-    'ITEMS',
-    'PING_DISCORD_IDS',
+    'CONFIG_PATH',
     'SOUND',
-    'WEBHOOK_URL',
-    'Config',
+    'config',
 )
 
 import sys
@@ -192,11 +188,4 @@ def load_config() -> Config:
         sys.exit(1)
 
 
-_config = load_config()
-
-# Export typed config values
-DO_AUDIO_NOTIFICATION: bool = _config.do_audio_notification
-CHECK_INTERVAL: float = _config.check_interval
-WEBHOOK_URL: str = _config.webhook_url
-PING_DISCORD_IDS: set[int] = _config.ping_discord_ids
-ITEMS: list[ConfigItem] = _config.items
+config = load_config()

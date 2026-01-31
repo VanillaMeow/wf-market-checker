@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from yarl import URL
 
-from .config import PING_DISCORD_IDS
+from .config import config
 
 BASE_URL = URL('https://api.warframe.market/v2/')
 BASE_URL_V1 = URL('https://api.warframe.market/v1/')
@@ -14,4 +14,6 @@ HEADERS = {'accept': 'application/json', 'platform': 'pc', 'crossplay': 'true'}
 WH_HEADERS = {'accept': 'application/json'}
 
 WH_EMBED_COLOR = int('#e362ab'.lstrip('#'), 16)
-PING_DISCORD_IDS_FMT = ' '.join(f'<@{discord_id}>' for discord_id in PING_DISCORD_IDS)
+PING_DISCORD_IDS_FMT = ' '.join(
+    f'<@{discord_id}>' for discord_id in config.ping_discord_ids
+)

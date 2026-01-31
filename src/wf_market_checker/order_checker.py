@@ -23,7 +23,7 @@ from colorama import Fore
 
 from . import utils, webhook_builder
 from .app_types import AUTO_PRICE_TO_SECONDS_MAP, AutoPrice, Item
-from .config import CHECK_INTERVAL, DO_AUDIO_NOTIFICATION, ITEMS, SOUND, WEBHOOK_URL
+from .config import SOUND, config
 from .constants import (
     BASE_URL,
     BASE_URL_V1,
@@ -143,7 +143,7 @@ class OrderChecker:
             self.order_tasks.add(task)
 
         # Create initial tasks
-        for config_item in ITEMS:
+        for config_item in config.items:
             # First we need to convert from CofigItem to Item
             i = Item(
                 name=config_item.name,
@@ -242,7 +242,7 @@ class OrderChecker:
 
             # Wait before checking again
             try:
-                await asyncio.sleep(CHECK_INTERVAL)
+                await asyncio.sleep(config.check_interval)
             except asyncio.CancelledError:
                 break
 
@@ -284,7 +284,7 @@ class OrderChecker:
             return
 
         # Send webhook and copy to clipboard
-        if DO_AUDIO_NOTIFICATION:
+        if config.do_audio_notification:
             utils.play_sound(SOUND)
 
         fmt = utils.format_buy_message(order, item_model)
@@ -309,13 +309,13 @@ class OrderChecker:
 
     async def notify_webhook(self, order: OrderWithUser, item: ItemModel, /) -> None:
         """Send a webhook notification when a suitable order is found."""
-        if not WEBHOOK_URL:
+        if not config.webhook_url:
             return
 
         data = webhook_builder.create_webhook_data(order=order, item=item)
 
         try:
-            async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
+            async with self.wh_session.post(config.webhook_url, json=data) as r:
                 r.raise_for_status()
         except aiohttp.ServerDisconnectedError:
             # Happens when quitting the script while the webhook is being sent
@@ -388,7 +388,7 @@ class OrderChecker:
         # Item.name is equivalent to ItemModel.slug
         tasks = [
             loop.create_task(self.request_item_from_id.__wrapped__(self, item.name))
-            for item in ITEMS
+            for item in config.items
         ]
 
         item_ids: list[str] = [
