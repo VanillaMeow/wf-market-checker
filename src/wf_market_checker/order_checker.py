@@ -21,14 +21,9 @@ from aiolimiter import AsyncLimiter
 from async_lru import alru_cache
 from colorama import Fore
 
-from . import utils
+from . import utils, webhook_builder
 from .app_types import AUTO_PRICE_TO_SECONDS_MAP, AutoPrice, Item
-from .config import (
-    CHECK_INTERVAL,
-    ITEMS,
-    SOUND,
-    WEBHOOK_URL,
-)
+from .config import CHECK_INTERVAL, DO_AUDIO_NOTIFICATION, ITEMS, SOUND, WEBHOOK_URL
 from .constants import (
     BASE_URL,
     BASE_URL_V1,
@@ -289,7 +284,9 @@ class OrderChecker:
             return
 
         # Send webhook and copy to clipboard
-        utils.play_sound(SOUND)
+        if DO_AUDIO_NOTIFICATION:
+            utils.play_sound(SOUND)
+
         fmt = utils.format_buy_message(order, item_model)
         loop.create_task(self.notify_webhook(order, item_model))
         pyperclip.copy(fmt)
@@ -315,7 +312,7 @@ class OrderChecker:
         if not WEBHOOK_URL:
             return
 
-        data = utils.create_webhook_data(order=order, item=item)
+        data = webhook_builder.create_webhook_data(order=order, item=item)
 
         try:
             async with self.wh_session.post(WEBHOOK_URL, json=data) as r:
