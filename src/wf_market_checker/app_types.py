@@ -9,14 +9,14 @@ from pydantic import BaseModel
 class AutoPrice(StrEnum):
     TWELVE_HOUR = '12h'
     SIX_HOUR = '6h'
-    ONE_HOUR = '1h'
+    TWO_HOUR = '2h'
 
 
 # TODO(leah): make automatic and make agnostic
 AUTO_PRICE_TO_SECONDS_MAP: dict[AutoPrice, int] = {
     AutoPrice.TWELVE_HOUR: 12 * 60 * 60,
     AutoPrice.SIX_HOUR: 6 * 60 * 60,
-    AutoPrice.ONE_HOUR: 1 * 60 * 60,
+    AutoPrice.TWO_HOUR: 2 * 60 * 60,
 }
 
 
