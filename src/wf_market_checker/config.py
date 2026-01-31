@@ -10,14 +10,18 @@ __all__ = (
     'Config',
 )
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
 import platformdirs
 import tomlkit
-from pydantic import BaseModel, ConfigDict, Field
+from colorama import Fore
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from tomlkit.exceptions import TOMLKitError
 
 from .app_types import AutoPrice
+from .utils import indent
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
@@ -144,8 +148,48 @@ class Config(BaseModel):
         path.write_text(doc.as_string(), encoding='utf-8')
 
 
+def _format_validation_errors(err: ValidationError) -> str:
+    """Format pydantic validation errors into a readable message."""
+    lines: list[str] = []
+
+    for error in err.errors():
+        loc = '.'.join(str(part) for part in error['loc'])
+        msg = error['msg']
+
+        lines.append(f'{Fore.YELLOW}{loc}{Fore.RESET}: {msg}')
+        if 'input' in error:
+            lines.append(
+                indent(f'{Fore.LIGHTBLACK_EX}Got: {error["input"]!r}{Fore.RESET}')
+            )
+
+    error_block = indent('\n'.join(lines))
+    return (
+        f'{Fore.RED}Configuration error in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n\n'
+        f'{error_block}\n\n'
+        f'{Fore.LIGHTBLACK_EX}Please fix the config file and try again.{Fore.RESET}'
+    )
+
+
+def _format_toml_error(err: TOMLKitError) -> str:
+    """Format TOML parsing errors into a readable message."""
+    return ''.join(
+        (
+            f'{Fore.RED}TOML syntax error in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n\n',
+            indent(f'{Fore.YELLOW}{err}{Fore.RESET}\n\n'),
+            f'{Fore.LIGHTBLACK_EX}Please fix the config file and try again.{Fore.RESET}',
+        )
+    )
+
+
 def load_config() -> Config:
-    return Config.load()
+    try:
+        return Config.load()
+    except ValidationError as e:
+        print(_format_validation_errors(e))
+        sys.exit(1)
+    except TOMLKitError as e:
+        print(_format_toml_error(e))
+        sys.exit(1)
 
 
 _config = load_config()
