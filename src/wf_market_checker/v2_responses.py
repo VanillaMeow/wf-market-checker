@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import Item, OrderWithUser
+from .v2_models import Item, OrderWithUser
 
 
 class BaseResponse(BaseModel):

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from .models import Item as ItemModel, OrderWithUser
+    from .v2_models import Item as ItemModel, OrderWithUser
 
 
 if sys.platform == 'win32':

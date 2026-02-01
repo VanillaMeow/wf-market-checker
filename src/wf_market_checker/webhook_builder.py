@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from discord.types.embed import Embed as EmbedData
 
-    from .models import Item as ItemModel, OrderWithUser
+    from .v2_models import Item as ItemModel, OrderWithUser
 
     class _WebhookData(TypedDict):
         content: str | None
