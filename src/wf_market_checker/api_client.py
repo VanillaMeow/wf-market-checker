@@ -1,18 +1,25 @@
 """HTTP client for the Warframe Market API."""
 
+# ruff: noqa: PLC2701, SLF001
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 __all__ = ('WFMarketClient',)
 
 import asyncio
 from collections.abc import Mapping
+from functools import _make_key
 from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from aiohttp import ClientTimeout
 from aiolimiter import AsyncLimiter
-from async_lru import alru_cache
+from async_lru import (
+    _CacheItem,
+    alru_cache,
+)
 
 from .constants import BASE_URL, BASE_URL_V1, HEADERS, WH_HEADERS
 from .v1_responses import StatisticsResponse
@@ -183,18 +190,26 @@ class WFMarketClient:
         """
         loop = asyncio.get_running_loop()
 
-        # First fetch items by slug to get their IDs
+        # Fetch items by slug (bypassing cache)
         tasks = [
             loop.create_task(self.get_item.__wrapped__(self, name))
             for name in item_names
         ]
 
-        item_ids: list[str] = [
-            item_model.id
-            for item_model in await asyncio.gather(*tasks)
-            if item_model is not None
-        ]
+        items = await asyncio.gather(*tasks)
 
-        # Then cache by ID
-        tasks = [loop.create_task(self.get_item(item_id)) for item_id in item_ids]
-        await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+        # Access the underlying cache (through name-mangled attributes)
+        wrapper = self.get_item._LRUCacheWrapperInstanceMethod__wrapper  # type: ignore[]
+        cache = wrapper._LRUCacheWrapper__cache  # type: ignore[]
+
+        # Manually populate cache by ID
+        for item_model in items:
+            if item_model is not None:
+                # Key must include self since alru_cache prepends instance for methods
+                key = _make_key((self, item_model.id), {}, typed=False)
+
+                # Create a completed future with the result
+                fut: asyncio.Future[ItemModel | None] = loop.create_future()
+                fut.set_result(item_model)
+
+                cache[key] = _CacheItem(fut, None)
