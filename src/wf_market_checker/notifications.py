@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-__all__ = ('NotificationService',)
+import subprocess
+
+__all__ = ('Notifications',)
 
 import traceback
 from typing import TYPE_CHECKING
@@ -15,16 +17,39 @@ from .config import SOUND, config
 from .ui import ConsoleUI
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from .api_client import WFMarketClient
     from .v2_models import Item as ItemModel, OrderWithUser
 
 
-class NotificationService:
+class Notifications:
     """Handles all notifications when a suitable order is found."""
 
     def __init__(self, client: WFMarketClient, ui: ConsoleUI) -> None:
         self._client = client
         self._ui = ui
+
+    @staticmethod
+    def format_buy_message(order: OrderWithUser, item: ItemModel) -> str:
+        item_name = item.i18n['en'].name
+
+        # Make format
+        rank_fmt = f' (rank {order.rank})' if order.rank is not None else ''
+        return (
+            f'/w {order.user.ingame_name} Hi! '
+            f'I want to buy: "{item_name}{rank_fmt}" '
+            f'for {order.platinum} platinum. (warframe.market)'
+        )
+
+    @staticmethod
+    def play_sound(sound: Path, /) -> None:
+        """Play a sound when a suitable order is found."""
+        subprocess.Popen(
+            f'cvlc --play-and-exit --gain 0.1 {sound}',
+            shell=True,
+            stderr=subprocess.DEVNULL,
+        )
 
     async def notify_order_found(self, order: OrderWithUser, item: ItemModel) -> None:
         """Send all notifications for a found order.
@@ -37,9 +62,9 @@ class NotificationService:
             The item model.
         """
         if config.do_audio_notification:
-            utils.play_sound(SOUND)
+            self.play_sound(SOUND)
 
-        fmt = utils.format_buy_message(order, item)
+        fmt = self.format_buy_message(order, item)
         pyperclip.copy(fmt)
         self._ui.show_order_found(fmt)
 

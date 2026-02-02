@@ -15,7 +15,7 @@ from .api_client import WFMarketClient
 from .app_types import AutoPrice, Item
 from .auto_price import AutoPriceUpdater
 from .config import config
-from .notifications import NotificationService
+from .notifications import Notifications
 from .ui import ConsoleUI
 
 if TYPE_CHECKING:
@@ -37,7 +37,7 @@ class OrderChecker:
         # Components
         self._client = WFMarketClient()
         self._ui = ConsoleUI()
-        self._notifications = NotificationService(self._client, self._ui)
+        self._notifications = Notifications(self._client, self._ui)
         self._auto_price = AutoPriceUpdater(self._client, self._ui)
 
     async def __aenter__(self) -> Self:
