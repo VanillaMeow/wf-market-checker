@@ -7,6 +7,7 @@ __all__ = (
 )
 
 import sys
+from multiprocessing import current_process
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
@@ -179,6 +180,21 @@ def _format_toml_error(err: TOMLKitError) -> str:
 
 
 def load_config() -> Config:
+    """
+    Load and validate the application configuration.
+
+    Returns a default Config in subprocess workers to avoid redundant file I/O.
+    In the main process, loads from disk and exits on validation or syntax errors.
+
+    Returns
+    -------
+    Config
+        The loaded configuration, or a default instance in worker processes.
+    """
+
+    if current_process().name != 'MainProcess':
+        return Config()
+
     try:
         return Config.load()
     except ValidationError as e:
