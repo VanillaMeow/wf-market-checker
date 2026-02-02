@@ -23,6 +23,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "icecream>=2.1.10",
     "pyright>=1.1.408",
     "ruff>=0.14.11",
 ]
