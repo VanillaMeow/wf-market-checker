@@ -66,6 +66,10 @@ class OrderChecker:
         finally:
             for task in self._order_tasks:
                 task.cancel()
+            for task in self._auto_price_tasks:
+                task.cancel()
+            for task in self._notifications.bg_tasks:
+                task.cancel()
 
     async def _schedule_tasks(self) -> None:
         """Schedule async tasks for checking orders.
@@ -128,7 +132,6 @@ class OrderChecker:
         Item
             The same item that was passed in.
         """
-        found_order: OrderWithUser | None = None
 
         while True:
             try:
@@ -148,15 +151,17 @@ class OrderChecker:
 
             self._ui.show_progress(self._total)
 
-            for order in orders_resp.data.sell:
-                if self._is_order_suitable(order, item):
-                    found_order = order
-                    break
+            # Selection logic
+            found_orders: list[OrderWithUser] = [
+                order
+                for order in orders_resp.data.sell
+                if self._is_order_suitable(order, item)
+            ]
 
-            if found_order:
-                self._found_orders_ids.add(found_order.id)
-                await self._accept_order(found_order)
-                break
+            # Completion logic
+            if found_orders:
+                self._found_orders_ids.update([order.id for order in found_orders])
+                await self._accept_orders(found_orders)
 
             try:
                 await asyncio.sleep(config.check_interval)
@@ -187,7 +192,7 @@ class OrderChecker:
             and order.user.status == 'ingame'
         )
 
-    async def _accept_order(self, order: OrderWithUser) -> None:
+    async def _accept_orders(self, orders: list[OrderWithUser]) -> None:
         """Handle an accepted order.
 
         Parameters
@@ -195,10 +200,12 @@ class OrderChecker:
         order : OrderWithUser
             The accepted order.
         """
-        item_model = await self._client.get_item(order.item_id)
 
-        if item_model is None:
-            utils.error('Bad data (invalid item).')
-            return
+        for order in orders:
+            item_model = await self._client.get_item(order.item_id)
 
-        await self._notifications.notify_order_found(order, item_model)
+            if item_model is None:
+                utils.error('Bad data (invalid item).')
+                return
+
+            await self._notifications.notify_order_found(order, item_model)

@@ -20,6 +20,7 @@ from async_lru import (
     _CacheItem,
     alru_cache,
 )
+from discord import Webhook
 
 from .constants import BASE_URL, BASE_URL_V1, HEADERS, WH_HEADERS
 from .v1_responses import StatisticsResponse
@@ -172,13 +173,11 @@ class WFMarketClient:
 
         Raises
         ------
-        aiohttp.ClientError
+        discord.HTTPException
             If the request fails.
-        TimeoutError
-            If the request times out.
         """
-        async with self.wh_session.post(url, json=data) as r:
-            r.raise_for_status()
+        webhook = Webhook.from_url(url, session=self.wh_session)
+        await webhook.send(**data)
 
     async def warmup_item_cache(self, item_names: list[str]) -> None:
         """Pre-populate the item cache for the given item names.

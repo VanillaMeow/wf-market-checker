@@ -21,13 +21,11 @@ from .constants import (
 if TYPE_CHECKING:
     from typing import TypedDict
 
-    from discord.types.embed import Embed as EmbedData
-
     from .v2_models import Item as ItemModel, OrderWithUser
 
     class _WebhookData(TypedDict):
         content: str | None
-        embeds: list[EmbedData] | None
+        embeds: list[Embed] | None
 
 
 def create_webhook_data(item: ItemModel, order: OrderWithUser) -> _WebhookData:
@@ -76,5 +74,5 @@ def create_webhook_data(item: ItemModel, order: OrderWithUser) -> _WebhookData:
 
     return {
         'content': PING_DISCORD_IDS_FMT,
-        'embeds': [embed.to_dict()],
+        'embeds': [embed],
     }

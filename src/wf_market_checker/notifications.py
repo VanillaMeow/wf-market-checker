@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
 
 __all__ = ('Notifications',)
@@ -9,7 +10,7 @@ __all__ = ('Notifications',)
 import traceback
 from typing import TYPE_CHECKING
 
-import aiohttp
+import discord
 import pyperclip
 
 from . import utils, webhook_builder
@@ -27,8 +28,10 @@ class Notifications:
     """Handles all notifications when a suitable order is found."""
 
     def __init__(self, client: WFMarketClient, ui: ConsoleUI) -> None:
-        self._client = client
-        self._ui = ui
+        self._client: WFMarketClient = client
+        self._ui: ConsoleUI = ui
+
+        self.bg_tasks: set[asyncio.Task[None]] = set()
 
     @staticmethod
     def format_buy_message(order: OrderWithUser, item: ItemModel) -> str:
@@ -68,7 +71,9 @@ class Notifications:
         pyperclip.copy(fmt)
         self._ui.show_order_found(fmt)
 
-        await self._send_webhook(order, item)
+        task = asyncio.create_task(self._send_webhook(order, item))
+        self.bg_tasks.add(task)
+        task.add_done_callback(self.bg_tasks.discard)
 
     async def _send_webhook(self, order: OrderWithUser, item: ItemModel) -> None:
         """Send a webhook notification.
@@ -87,11 +92,6 @@ class Notifications:
 
         try:
             await self._client.post_webhook(config.webhook_url, data)
-        except aiohttp.ServerDisconnectedError:
-            # Happens when quitting the script while the webhook is being sent
-            return
-        except aiohttp.ClientError as e:
+        except discord.HTTPException as e:
             fmt = ''.join(traceback.format_tb(e.__traceback__))
-            print(f'\rFailed to send webhook: {e}\n{fmt}')
-        except TimeoutError:
-            utils.error('Webhook notification request timed out.')
+            utils.error(f'Failed to send webhook: {e}\n{fmt}')
