@@ -33,7 +33,8 @@ class OrderChecker:
         self._order_tasks: set[asyncio.Task[WatchedItem]] = set()
         self._auto_price_tasks: set[asyncio.Task[None]] = set()
         self._found_orders: TTLCache[str, int] = TTLCache(maxsize=1000, ttl=43200)
-        self._total: int = 0
+        self._started: bool = False
+        self._total_req: int = 0
 
         # Components
         self._client = WFMarketClient()
@@ -42,7 +43,8 @@ class OrderChecker:
         self._auto_price = AutoPriceUpdater(self._client, self._ui)
 
     async def __aenter__(self) -> Self:
-        await self._client.start()
+        await self.start()
+        self._started = True
         return self
 
     async def __aexit__(
@@ -51,10 +53,31 @@ class OrderChecker:
         _exc_value: BaseException | None,
         _exc_tb: TracebackType | None,
     ) -> None:
+        await self.stop()
+
+    async def start(self) -> None:
+        """Start the order checker."""
+        if self._started:
+            m = 'OrderChecker already started. Call stop() before start().'
+            raise RuntimeError(m)
+
+        await self._client.start()
+
+    async def stop(self) -> None:
+        """Stop the order checker."""
+        if not self._started:
+            m = 'OrderChecker not started. Call start() before stop().'
+            raise RuntimeError(m)
+
         await self._client.stop()
+        self._started = False
 
     async def run(self) -> None:
         """Run the order checker."""
+        if not self._started:
+            m = 'OrderChecker not started. Call start() before run().'
+            raise RuntimeError(m)
+
         item_names = [item.name for item in config.items]
         self._ui.show_caching_item('items')
         await self._client.warmup_item_cache(item_names)
@@ -144,13 +167,13 @@ class OrderChecker:
                 utils.error(f'Request timed out for {item}. Continuing.')
                 continue
 
-            self._total += 1
+            self._total_req += 1
 
             if not orders_resp.data:
                 utils.error(f'No data for {item.name}.')
                 continue
 
-            self._ui.show_progress(self._total)
+            self._ui.show_progress(self._total_req)
 
             # Selection logic
             found_orders: list[OrderWithUser] = [
