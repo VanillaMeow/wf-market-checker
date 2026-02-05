@@ -19,7 +19,7 @@ AUTO_PRICE_TO_SECONDS_MAP: dict[AutoPrice, int] = {
 }
 
 
-class Item(BaseModel):
+class WatchedItem(BaseModel):
     name: str
     price_threshold: int
     quantity_min: int = -1

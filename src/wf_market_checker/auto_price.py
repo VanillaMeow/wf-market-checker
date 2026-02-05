@@ -15,7 +15,7 @@ from .app_types import AUTO_PRICE_TO_SECONDS_MAP, AutoPrice
 
 if TYPE_CHECKING:
     from .api_client import WFMarketClient
-    from .app_types import Item
+    from .app_types import WatchedItem
     from .ui import ConsoleUI
 
 
@@ -29,12 +29,12 @@ class AutoPriceUpdater:
         self._client: WFMarketClient = client
         self._ui: ConsoleUI = ui
 
-    async def start(self, item: Item, auto_price: AutoPrice) -> None:
+    async def start(self, item: WatchedItem, auto_price: AutoPrice) -> None:
         """Start the auto-price update loop for an item.
 
         Parameters
         ----------
-        item : Item
+        item : WatchedItem
             The item to update prices for.
         auto_price : AutoPrice
             The auto-price configuration.
@@ -53,13 +53,13 @@ class AutoPriceUpdater:
                 break
 
     async def _calculate_price(
-        self, item: Item, time_window_seconds: int
+        self, item: WatchedItem, time_window_seconds: int
     ) -> int | None:
         """Fetch statistics and calculate the average price for the time window.
 
         Parameters
         ----------
-        item : Item
+        item : WatchedItem
             The item to calculate price for.
         time_window_seconds : int
             The time window in seconds.

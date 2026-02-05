@@ -14,7 +14,7 @@ from . import utils
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from .app_types import Item
+    from .app_types import WatchedItem
 
 
 class ConsoleUI:
@@ -41,12 +41,12 @@ class ConsoleUI:
         sys.stdout.flush()
 
     @staticmethod
-    def show_price_update(item: Item, new_price: int) -> None:
+    def show_price_update(item: WatchedItem, new_price: int) -> None:
         """Display a price threshold update notification.
 
         Parameters
         ----------
-        item : Item
+        item : WatchedItem
             The item whose price was updated.
         new_price : int
             The new price threshold.

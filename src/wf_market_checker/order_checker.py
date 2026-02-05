@@ -13,7 +13,7 @@ from cachetools import TTLCache
 
 from . import utils
 from .api_client import WFMarketClient
-from .app_types import AutoPrice, Item
+from .app_types import AutoPrice, WatchedItem
 from .auto_price import AutoPriceUpdater
 from .config import config
 from .notifications import Notifications
@@ -30,7 +30,7 @@ class OrderChecker:
     """Main order checker that orchestrates all components."""
 
     def __init__(self) -> None:
-        self._order_tasks: set[asyncio.Task[Item]] = set()
+        self._order_tasks: set[asyncio.Task[WatchedItem]] = set()
         self._auto_price_tasks: set[asyncio.Task[None]] = set()
         self._found_orders: TTLCache[str, int] = TTLCache(maxsize=1000, ttl=43200)
         self._total: int = 0
@@ -81,7 +81,7 @@ class OrderChecker:
         """
         # Create initial tasks
         for config_item in config.items:
-            item = Item(
+            item = WatchedItem(
                 name=config_item.name,
                 price_threshold=0,
                 quantity_min=config_item.quantity_min,
@@ -108,29 +108,29 @@ class OrderChecker:
                 item = await task
                 self._add_order_task(item)
 
-    def _add_order_task(self, item: Item) -> None:
+    def _add_order_task(self, item: WatchedItem) -> None:
         """Add an order checking task for an item."""
         task = asyncio.create_task(self._check_orders(item))
         task.add_done_callback(self._order_tasks.discard)
         self._order_tasks.add(task)
 
-    def _add_auto_price_task(self, item: Item, auto_price: AutoPrice) -> None:
+    def _add_auto_price_task(self, item: WatchedItem, auto_price: AutoPrice) -> None:
         """Add an auto-price update task for an item."""
         task = asyncio.create_task(self._auto_price.start(item, auto_price))
         task.add_done_callback(self._auto_price_tasks.discard)
         self._auto_price_tasks.add(task)
 
-    async def _check_orders(self, item: Item) -> Item:
+    async def _check_orders(self, item: WatchedItem) -> WatchedItem:
         """Check current orders for the specified item.
 
         Parameters
         ----------
-        item : Item
+        item : WatchedItem
             The item to check orders for.
 
         Returns
         -------
-        Item
+        WatchedItem
             The same item that was passed in.
         """
 
@@ -172,14 +172,14 @@ class OrderChecker:
 
         return item
 
-    def _is_order_suitable(self, order: OrderWithUser, item: Item) -> bool:
+    def _is_order_suitable(self, order: OrderWithUser, item: WatchedItem) -> bool:
         """Check if an order meets the criteria.
 
         Parameters
         ----------
         order : OrderWithUser
             The order to check.
-        item : Item
+        item : WatchedItem
             The item criteria.
 
         Returns
