@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Self
 import platformdirs
 import tomlkit
 from colorama import Fore
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from tomlkit.exceptions import TOMLKitError
 
 from .app_types import AutoPrice
@@ -48,6 +48,15 @@ class ConfigItem(BaseModel):
     quantity_min: int = Field(default=-1, alias='quantity-min')
     rank: int | None = None
     profit_margin_percent: int = Field(default=30, alias='profit-margin-percent')
+
+    @field_validator('price_threshold', mode='after')
+    @classmethod
+    def _validate_price_threshold(cls, value: Any) -> Any:
+        """Validates that price threshold isn't AutoPrice.NONE."""
+        if isinstance(value, str) and value.lower() == AutoPrice.NONE.value.lower():
+            m = 'price_threshold cannot be set to None.'
+            raise ValueError(m)
+        return value
 
 
 class Config(BaseModel):
