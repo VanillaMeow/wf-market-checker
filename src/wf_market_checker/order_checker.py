@@ -106,7 +106,7 @@ class OrderChecker:
         for config_item in config.items:
             item = WatchedItem(
                 name=config_item.name,
-                price_threshold=0,
+                price_threshold=0,  # We will populate this later
                 quantity_min=config_item.quantity_min,
                 rank=config_item.rank,
                 profit_margin_percent=config_item.profit_margin_percent,
@@ -114,8 +114,8 @@ class OrderChecker:
 
             config_price = config_item.price_threshold
             if isinstance(config_price, AutoPrice):
-                auto_price = copy(config_price)
-                self._add_auto_price_task(item, auto_price)
+                item.auto_price = copy(config_price)
+                self._add_auto_price_task(item)
             else:
                 item.price_threshold = config_price
 
@@ -137,9 +137,9 @@ class OrderChecker:
         task.add_done_callback(self._order_tasks.discard)
         self._order_tasks.add(task)
 
-    def _add_auto_price_task(self, item: WatchedItem, auto_price: AutoPrice) -> None:
+    def _add_auto_price_task(self, item: WatchedItem) -> None:
         """Add an auto-price update task for an item."""
-        task = asyncio.create_task(self._auto_price.start(item, auto_price))
+        task = asyncio.create_task(self._auto_price.start(item))
         task.add_done_callback(self._auto_price_tasks.discard)
         self._auto_price_tasks.add(task)
 

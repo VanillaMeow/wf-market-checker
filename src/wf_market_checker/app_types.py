@@ -9,6 +9,7 @@ class AutoPrice(StrEnum):
     TWELVE_HOUR = '12h'
     SIX_HOUR = '6h'
     TWO_HOUR = '2h'
+    NONE = 'None'
 
 
 # TODO(leah): make automatic and make agnostic
@@ -25,3 +26,4 @@ class WatchedItem(BaseModel):
     quantity_min: int = -1
     rank: int | None = None
     profit_margin_percent: int = 30
+    auto_price: AutoPrice = AutoPrice.NONE

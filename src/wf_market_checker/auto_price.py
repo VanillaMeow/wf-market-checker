@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import aiohttp
 
 from . import utils
-from .app_types import AUTO_PRICE_TO_SECONDS_MAP, AutoPrice
+from .app_types import AUTO_PRICE_TO_SECONDS_MAP
 
 if TYPE_CHECKING:
     from .api_client import WFMarketClient
@@ -29,17 +29,15 @@ class AutoPriceUpdater:
         self._client: WFMarketClient = client
         self._ui: ConsoleUI = ui
 
-    async def start(self, item: WatchedItem, auto_price: AutoPrice) -> None:
+    async def start(self, item: WatchedItem) -> None:
         """Start the auto-price update loop for an item.
 
         Parameters
         ----------
         item : WatchedItem
             The item to update prices for.
-        auto_price : AutoPrice
-            The auto-price configuration.
         """
-        time_window_seconds = AUTO_PRICE_TO_SECONDS_MAP[auto_price]
+        time_window_seconds = AUTO_PRICE_TO_SECONDS_MAP[item.auto_price]
 
         while True:
             new_price = await self._calculate_price(item, time_window_seconds)
