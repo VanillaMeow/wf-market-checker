@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from .ui import ConsoleUI
 
 
+ONE_HOUR = 60 * 60
+
+
 class AutoPriceUpdater:
     """Periodically updates item price thresholds based on market statistics."""
 
@@ -45,7 +48,7 @@ class AutoPriceUpdater:
                 self._ui.show_price_update(item, new_price)
 
             try:
-                await asyncio.sleep(time_window_seconds)
+                await asyncio.sleep(ONE_HOUR)
             except asyncio.CancelledError:
                 break
 
