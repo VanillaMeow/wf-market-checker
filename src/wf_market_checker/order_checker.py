@@ -9,6 +9,7 @@ from copy import copy
 from typing import TYPE_CHECKING
 
 import aiohttp
+from cachetools import TTLCache
 
 from . import utils
 from .api_client import WFMarketClient
@@ -31,7 +32,7 @@ class OrderChecker:
     def __init__(self) -> None:
         self._order_tasks: set[asyncio.Task[Item]] = set()
         self._auto_price_tasks: set[asyncio.Task[None]] = set()
-        self._found_orders_ids: set[str] = set()
+        self._found_orders: TTLCache[str, int] = TTLCache(maxsize=1000, ttl=43200)
         self._total: int = 0
 
         # Components
@@ -160,7 +161,8 @@ class OrderChecker:
 
             # Completion logic
             if found_orders:
-                self._found_orders_ids.update([order.id for order in found_orders])
+                for order in found_orders:
+                    self._found_orders[order.id] = order.platinum
                 await self._accept_orders(found_orders)
 
             try:
@@ -185,8 +187,11 @@ class OrderChecker:
         bool
             True if the order is suitable.
         """
+        cached_price = self._found_orders.get(order.id)
+        is_new_or_price_dropped = cached_price is None or order.platinum < cached_price
+
         return (
-            order.id not in self._found_orders_ids
+            is_new_or_price_dropped
             and order.platinum <= item.price_threshold
             and order.quantity >= item.quantity_min
             and order.user.status == 'ingame'

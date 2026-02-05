@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import NamedTuple
 
 from pydantic import BaseModel
 
@@ -26,9 +25,3 @@ class Item(BaseModel):
     quantity_min: int = -1
     rank: int | None = None
     profit_margin_percent: int = 30
-
-
-# TODO(leah): implement later to allow for invaliding orders that changed price
-class FoundOrder(NamedTuple):
-    id: str
-    price: int

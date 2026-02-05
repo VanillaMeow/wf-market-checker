@@ -12,6 +12,7 @@ dependencies = [
     "aiohttp>=3.13.2",
     "aiolimiter>=1.2.1",
     "async-lru>=2.0.5",
+    "cachetools>=7.0.0",
     "colorama>=0.4.6",
     "discord-py>=2.6.4",
     "platformdirs>=4.3.6",
