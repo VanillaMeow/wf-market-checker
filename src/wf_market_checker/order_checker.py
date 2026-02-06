@@ -6,7 +6,7 @@ __all__ = ('OrderChecker',)
 
 import asyncio
 from copy import copy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from cachetools import TTLCache
@@ -41,6 +41,13 @@ class OrderChecker:
         self._ui = ConsoleUI()
         self._notifications = Notifications(self._client, self._ui)
         self._auto_price = AutoPriceUpdater(self._client, self._ui)
+
+        # Task sets for cancelling
+        self._task_sets: list[set[asyncio.Task[Any]]] = [
+            self._order_tasks,
+            self._auto_price_tasks,
+            self._notifications.bg_tasks,
+        ]
 
     async def __aenter__(self) -> Self:
         await self.start()
@@ -88,12 +95,9 @@ class OrderChecker:
         except (asyncio.CancelledError, KeyboardInterrupt):
             self._ui.show_exiting()
         finally:
-            for task in self._order_tasks:
-                task.cancel()
-            for task in self._auto_price_tasks:
-                task.cancel()
-            for task in self._notifications.bg_tasks:
-                task.cancel()
+            for task_set in self._task_sets:
+                for task in task_set:
+                    task.cancel()
 
     async def _schedule_tasks(self) -> None:
         """Schedule async tasks for checking orders.
