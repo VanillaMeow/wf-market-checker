@@ -91,9 +91,17 @@ class AutoPriceUpdater:
         # Filter to entries within our time window
         filtered = [e for e in entries if e.datetime >= cutoff]
 
+        # Handle no entries
         if not filtered:
             utils.error(f'No statistics entries found for {item.name} in time window.')
-            return None
+
+            # price_threshold is 0 when initially setting auto-price
+            if item.price_threshold <= 0:
+                max_len = min(4, len(entries))
+                filtered = entries[:max_len]
+                utils.error(f'Falling back to latest {max_len} entries.')
+            else:
+                return None
 
         # Calculate average from moving_avg
         avg = sum(e.moving_avg for e in filtered) / len(filtered)
