@@ -1,13 +1,15 @@
 #:schema ./config.schema.json
 
 do-audio-notification = false
-check-interval = 1.0
+check-interval = 1.0  # Seconds between checks (rate-limit safe)
 webhook-url = 'https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK'
-ping-discord-ids = []
+ping-discord-ids = []  # Discord user IDs to ping (e.g. [123456789, 987654321])
 
+# Each [[items]] block defines one item to watch. Add as many as you want.
+# Find the item's URL name at: warframe.market/items/<name>
 [[items]]
 name = 'molt_augmented'
-price-threshold = '2h'
-profit-margin-percent = 30
-rank = 5
-quantity-min = -1
+price-threshold = '2h'  # Fixed number (e.g. 50) or auto-price window: '2h', '6h', '12h'
+profit-margin-percent = 30  # Auto-price only: alert when this % below average
+rank = 5  # Mod rank filter. Remove for non-rankable items
+quantity-min = -1  # Min seller quantity. -1 = no minimum. Can be omitted.
