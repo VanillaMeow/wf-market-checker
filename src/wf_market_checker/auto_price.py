@@ -5,7 +5,7 @@ from __future__ import annotations
 __all__ = ('AutoPriceUpdater',)
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -78,7 +78,7 @@ class AutoPriceUpdater:
 
         # Filter entries within the time window
         now = datetime.now(UTC)
-        cutoff = now.timestamp() - time_window_seconds
+        cutoff = now - timedelta(seconds=time_window_seconds)
 
         # Use live sell statistics from the 48h window
         statistics = statistics_resp.payload.statistics_closed
@@ -89,7 +89,7 @@ class AutoPriceUpdater:
         )
 
         # Filter to entries within our time window
-        filtered = [e for e in entries if e.datetime.timestamp() >= cutoff]
+        filtered = [e for e in entries if e.datetime >= cutoff]
 
         if not filtered:
             utils.error(f'No statistics entries found for {item.name} in time window.')
