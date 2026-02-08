@@ -1,6 +1,6 @@
 # wf-market-checker
 
-Monitors [warframe.market](https://warframe.market/) for sell orders below a price you set — either a fixed platinum value or an automatically calculated threshold based on recent market averages.
+Monitors [warframe.market](https://warframe.market/) for sell orders below a price you set - either a fixed platinum value or an automatically calculated threshold based on recent market averages.
 
 When a matching order is found it copies a `/w` whisper message to your clipboard, optionally sends a Discord webhook notification, and can play an audio alert.
 
