@@ -27,29 +27,8 @@ uv run app
 
 ## Configuration
 
-On first run, a `config.toml` file is generated in your platform's config directory.
-The app will tell you where it was created. Open it in any text editor.
-
-### General settings
-
-| Key | Type | Default | Description |
-| --- | --- | --- | --- |
-| `do-audio-notification` | `bool` | `false` | Play a sound when a matching order is found. |
-| `check-interval` | `float` | `1.0` | Seconds between each check cycle. The app respects warframe.market rate limits, so `1.0` is fine. |
-| `webhook-url` | `string` | `""` | A Discord webhook URL for notifications. Leave as `""` to disable Discord notifications. |
-| `ping-discord-ids` | `list[int]` | `[]` | Discord user IDs to ping in webhook messages (e.g. `[123456789, 987654321]`). |
-
-### Item entries (`[[items]]`)
-
-Each `[[items]]` block defines one item to watch. You can add as many as you want.
-
-| Key | Type | Default | Description |
-| --- | --- | --- | --- |
-| `name` | `string` | *required* | The item's URL name on warframe.market (e.g. `molt_augmented`). You can find this in the URL: `warframe.market/items/<name>`. |
-| `price-threshold` | `int` or `string` | *required* | The maximum platinum price to alert on. Can be a fixed number (e.g. `50`) or an auto-price window: `"2h"`, `"6h"`, or `"12h"` to use the average market price from that time window. |
-| `profit-margin-percent` | `int` | `30` | When using auto-price, only alert if the order is at least this percent below the average. |
-| `rank` | `int` or omitted | *none* | Mod rank filter. Only match orders at this rank. Omit for non-rankable items. |
-| `quantity-min` | `int` | `-1` | Minimum quantity the seller must have listed. `-1` means no minimum. |
+On first run, a `config.toml` file is generated.
+The app will tell you where it was created, open it in any text editor.
 
 ### Example: watching multiple items
 
@@ -77,6 +56,34 @@ name = 'ammo_drum'
 price-threshold = 1
 quantity-min = 2
 ```
+
+### Documentation
+
+<details>
+  <summary><i>See here</i></summary>
+
+### General settings
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `do-audio-notification` | `bool` | `false` | Play a sound when a matching order is found. |
+| `check-interval` | `float` | `1.0` | Seconds between each check cycle. The app respects warframe.market rate limits, so `1.0` is fine. |
+| `webhook-url` | `string` | `""` | A Discord webhook URL for notifications. Leave as `""` to disable Discord notifications. |
+| `ping-discord-ids` | `list[int]` | `[]` | Discord user IDs to ping in webhook messages (e.g. `[123456789, 987654321]`). |
+
+### Item entries
+
+Each `[[items]]` block defines one item to watch. You can add as many as you want.
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | *required* | The item's URL name on warframe.market (e.g. `molt_augmented`). You can find this in the URL: `warframe.market/items/<name>`. |
+| `price-threshold` | `int` or `string` | *required* | The maximum platinum price to alert on. Can be a fixed number (e.g. `50`) or an auto-price window: `"2h"`, `"6h"`, or `"12h"` to use the average market price from that time window. |
+| `profit-margin-percent` | `int` | `30` | When using auto-price, only alert if the order is at least this percent below the average. |
+| `rank` | `int` or omitted | *none* | Mod rank filter. Only match orders at this rank. Omit for non-rankable items. |
+| `quantity-min` | `int` | `-1` | Minimum quantity the seller must have listed. `-1` means no minimum. |
+
+</details>
 
 ## Notes
 
