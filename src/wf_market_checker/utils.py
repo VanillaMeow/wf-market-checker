@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 import textwrap
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from colorama import Fore
@@ -29,6 +31,14 @@ else:
             return sys.stdin.read(1)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+async def sleep_until_dt(dt: datetime, /, *, now: datetime | None = None) -> None:
+    """Sleep until the given datetime."""
+    now = now or datetime.now(UTC)
+    delay = (dt - now).total_seconds()
+    if delay > 0:
+        await asyncio.sleep(delay)
 
 
 def indent(text: str, /, *, level: int = 1) -> str:

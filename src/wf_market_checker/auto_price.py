@@ -19,7 +19,13 @@ if TYPE_CHECKING:
     from .ui import ConsoleUI
 
 
-ONE_HOUR = 60 * 60
+API_UPDATE_BUFFER_DT = timedelta(minutes=2)
+
+
+def _next_hour_dt(now: datetime | None = None) -> datetime:
+    """Get the next beginning of an hour."""
+    now = now or datetime.now(UTC)
+    return (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
 
 
 class AutoPriceUpdater:
@@ -45,8 +51,11 @@ class AutoPriceUpdater:
                 item.price_threshold = new_price
                 self._ui.show_price_update(item, new_price)
 
+            # Wait until the next beginning of an hour + a couple minutes
+            # This is when the warframe.market API will update the statistics
             try:
-                await asyncio.sleep(ONE_HOUR)
+                dt: datetime = _next_hour_dt() + API_UPDATE_BUFFER_DT
+                await utils.sleep_until_dt(dt)
             except asyncio.CancelledError:
                 break
 
