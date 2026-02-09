@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
-
-from pydantic import BaseModel
 
 
 class AutoPrice(StrEnum):
@@ -20,7 +19,8 @@ AUTO_PRICE_TO_SECONDS_MAP: dict[AutoPrice, int] = {
 }
 
 
-class WatchedItem(BaseModel):
+@dataclass(slots=True)
+class WatchedItem:
     name: str
     price_threshold: int
     quantity_min: int = -1
