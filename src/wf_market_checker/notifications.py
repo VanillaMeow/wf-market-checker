@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-import subprocess
-
 __all__ = ('Notifications',)
 
+import asyncio
+import subprocess
 import traceback
 from typing import TYPE_CHECKING
 
