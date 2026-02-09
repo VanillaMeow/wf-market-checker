@@ -40,6 +40,38 @@ SOUND = SRC_PATH / 'assets' / 'cash.ogg'
 PLACEHOLDER_WH_URL = 'https://discord.com/api/webhooks/REPLACE_WITH_ACTUAL_WEBHOOK'
 
 
+def _format_validation_errors(err: ValidationError) -> str:
+    """Format pydantic validation errors into a readable message."""
+    lines: list[str] = []
+
+    for error in err.errors():
+        loc = '.'.join(str(part) for part in error['loc'])
+        msg = error['msg']
+
+        lines.append(f'{Fore.YELLOW}{loc}{Fore.RESET}: {msg}')
+        if 'input' in error:
+            lines.append(
+                indent(f'{Fore.LIGHTBLACK_EX}Got: {error["input"]!r}{Fore.RESET}')
+            )
+
+    error_block = indent('\n'.join(lines))
+    return (
+        f'{Fore.RED}Configuration error in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n\n'
+        f'{error_block}\n\n'
+        f'{Fore.LIGHTBLACK_EX}Please fix the config file and try again.{Fore.RESET}'
+    )
+
+
+def _format_toml_error(err: TOMLKitError) -> str:
+    """Format TOML parsing errors into a readable message."""
+    error_block = indent(f'{Fore.YELLOW}{err}{Fore.RESET}')
+    return (
+        f'{Fore.RED}TOML syntax error in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n\n'
+        f'{error_block}\n\n'
+        f'{Fore.LIGHTBLACK_EX}Please fix the config file and try again.{Fore.RESET}'
+    )
+
+
 class ConfigItem(BaseModel):
     model_config = ConfigDict(validate_by_name=True, validate_by_alias=True)
 
@@ -153,39 +185,6 @@ class Config(BaseModel):
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(doc.as_string(), encoding='utf-8')
-
-
-def _format_validation_errors(err: ValidationError) -> str:
-    """Format pydantic validation errors into a readable message."""
-    lines: list[str] = []
-
-    for error in err.errors():
-        loc = '.'.join(str(part) for part in error['loc'])
-        msg = error['msg']
-
-        lines.append(f'{Fore.YELLOW}{loc}{Fore.RESET}: {msg}')
-        if 'input' in error:
-            lines.append(
-                indent(f'{Fore.LIGHTBLACK_EX}Got: {error["input"]!r}{Fore.RESET}')
-            )
-
-    error_block = indent('\n'.join(lines))
-    return (
-        f'{Fore.RED}Configuration error in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n\n'
-        f'{error_block}\n\n'
-        f'{Fore.LIGHTBLACK_EX}Please fix the config file and try again.{Fore.RESET}'
-    )
-
-
-def _format_toml_error(err: TOMLKitError) -> str:
-    """Format TOML parsing errors into a readable message."""
-    return ''.join(
-        (
-            f'{Fore.RED}TOML syntax error in {Fore.MAGENTA}{CONFIG_PATH}{Fore.RESET}.\n\n',
-            indent(f'{Fore.YELLOW}{err}{Fore.RESET}\n\n'),
-            f'{Fore.LIGHTBLACK_EX}Please fix the config file and try again.{Fore.RESET}',
-        )
-    )
 
 
 def load_config() -> Config:

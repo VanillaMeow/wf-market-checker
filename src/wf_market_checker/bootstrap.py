@@ -11,11 +11,11 @@ from .config import CONFIG_PATH, config
 README_URL = 'https://github.com/VanillaMeow/wf-market-checker#configuration'
 
 
-def _exit_with_message(msg: str) -> NoReturn:
+def _exit_with_message(msg: str, exit_code: int = 0) -> NoReturn:
     """Print a message, wait for a keypress, then exit."""
     print(msg)
     utils.get_ch()
-    sys.exit(0)
+    sys.exit(exit_code)
 
 
 async def init_checks() -> None:
