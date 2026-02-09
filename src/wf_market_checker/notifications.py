@@ -6,6 +6,7 @@ __all__ = ('Notifications',)
 
 import asyncio
 import subprocess
+import sys
 import traceback
 from typing import TYPE_CHECKING
 
@@ -32,6 +33,23 @@ class Notifications:
 
         self.bg_tasks: set[asyncio.Task[None]] = set()
 
+    if sys.platform == 'linux':
+
+        @staticmethod
+        def play_sound(sound: Path, /) -> None:
+            """Play a sound when a suitable order is found."""
+            subprocess.Popen(
+                f'cvlc --play-and-exit --gain 0.1 {sound}',
+                shell=True,
+                stderr=subprocess.DEVNULL,
+            )
+    else:
+
+        @staticmethod
+        def play_sound(sound: Path, /) -> None:
+            # TODO(leah): implement sound on windows
+            pass
+
     @staticmethod
     def format_buy_message(order: OrderWithUser, item: ItemModel) -> str:
         item_name = item.i18n['en'].name
@@ -42,15 +60,6 @@ class Notifications:
             f'/w {order.user.ingame_name} Hi! '
             f'I want to buy: "{item_name}{rank_fmt}" '
             f'for {order.platinum} platinum. (warframe.market)'
-        )
-
-    @staticmethod
-    def play_sound(sound: Path, /) -> None:
-        """Play a sound when a suitable order is found."""
-        subprocess.Popen(
-            f'cvlc --play-and-exit --gain 0.1 {sound}',
-            shell=True,
-            stderr=subprocess.DEVNULL,
         )
 
     async def notify_order_found(self, order: OrderWithUser, item: ItemModel) -> None:
