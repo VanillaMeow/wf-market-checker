@@ -29,6 +29,18 @@ if TYPE_CHECKING:
 class OrderChecker:
     """Main order checker that orchestrates all components."""
 
+    __slots__ = (
+        '_auto_price_tasks',
+        '_found_orders',
+        '_order_tasks',
+        '_started',
+        '_task_sets',
+        '_total_req',
+        'client',
+        'notifications',
+        'ui',
+    )
+
     def __init__(self) -> None:
         self._order_tasks: set[asyncio.Task[WatchedItem]] = set()
         self._auto_price_tasks: set[asyncio.Task[None]] = set()
@@ -37,16 +49,15 @@ class OrderChecker:
         self._total_req: int = 0
 
         # Components
-        self._client = WFMarketClient()
-        self._ui = ConsoleUI()
-        self._notifications = Notifications(self._client, self._ui)
-        self._auto_price = AutoPriceUpdater(self._client, self._ui)
+        self.client = WFMarketClient()
+        self.ui = ConsoleUI()
+        self.notifications = Notifications(self.client, self.ui)
 
         # Task sets for cancelling
         self._task_sets: list[set[asyncio.Task[Any]]] = [
             self._order_tasks,
             self._auto_price_tasks,
-            self._notifications.bg_tasks,
+            self.notifications.bg_tasks,
         ]
 
     async def __aenter__(self) -> Self:
@@ -68,7 +79,7 @@ class OrderChecker:
             m = 'OrderChecker already started. Call stop() before start().'
             raise RuntimeError(m)
 
-        await self._client.start()
+        await self.client.start()
 
     async def stop(self) -> None:
         """Stop the order checker."""
@@ -76,7 +87,7 @@ class OrderChecker:
             m = 'OrderChecker not started. Call start() before stop().'
             raise RuntimeError(m)
 
-        await self._client.stop()
+        await self.client.stop()
         self._started = False
 
     async def run(self) -> None:
@@ -85,15 +96,17 @@ class OrderChecker:
             m = 'OrderChecker not started. Call start() before run().'
             raise RuntimeError(m)
 
-        item_names = [item.name for item in config.items]
-        self._ui.show_caching_item('items')
-        await self._client.warmup_item_cache(item_names)
-        self._ui.clear_line()
+        # Warm up the item cache
+        item_names = {item.name for item in config.items}
+        self.ui.show_caching_item('items')
+        await self.client.warmup_item_cache(item_names)
+        self.ui.clear_line()
 
+        # Start the main loop
         try:
             await self._schedule_tasks()
         except (asyncio.CancelledError, KeyboardInterrupt):
-            self._ui.show_exiting()
+            self.ui.show_exiting()
         finally:
             for task_set in self._task_sets:
                 for task in task_set:
@@ -116,13 +129,16 @@ class OrderChecker:
                 profit_margin_percent=config_item.profit_margin_percent,
             )
 
+            # Setup auto-price or fixed threshold
             config_price = config_item.price_threshold
             if isinstance(config_price, AutoPrice):
                 item.auto_price = copy(config_price)
+                item.auto_pricer = AutoPriceUpdater(item, order_checker=self)
                 self._add_auto_price_task(item)
             else:
                 item.price_threshold = config_price
 
+            # Finally, add the task
             self._add_order_task(item)
 
         # Schedule loop
@@ -143,7 +159,8 @@ class OrderChecker:
 
     def _add_auto_price_task(self, item: WatchedItem) -> None:
         """Add an auto-price update task for an item."""
-        task = asyncio.create_task(self._auto_price.start(item))
+        assert item.auto_pricer is not None  # noqa: S101
+        task = asyncio.create_task(item.auto_pricer.start())
         task.add_done_callback(self._auto_price_tasks.discard)
         self._auto_price_tasks.add(task)
 
@@ -161,9 +178,14 @@ class OrderChecker:
             The same item that was passed in.
         """
 
+        # Wait for auto-price to set the initial threshold
+        if item.auto_pricer is not None:
+            await item.auto_pricer.is_ready.wait()
+
+        # The main checker loop
         while True:
             try:
-                orders_resp = await self._client.get_item_orders(item.name, item.rank)
+                orders_resp = await self.client.get_item_orders(item.name, item.rank)
             except aiohttp.ClientError as e:
                 utils.error(f'Failed to get orders for {item}: {e}')
                 continue
@@ -177,7 +199,7 @@ class OrderChecker:
                 utils.error(f'No data for {item.name}.')
                 continue
 
-            self._ui.show_progress(self._total_req)
+            self.ui.show_progress(self._total_req)
 
             # Selection logic
             found_orders: list[OrderWithUser] = [
@@ -234,10 +256,10 @@ class OrderChecker:
         """
 
         for order in orders:
-            item_model = await self._client.get_item(order.item_id)
+            item_model = await self.client.get_item(order.item_id)
 
             if item_model is None:
                 utils.error('Bad data (invalid item).')
                 return
 
-            await self._notifications.notify_order_found(order, item_model)
+            await self.notifications.notify_order_found(order, item_model)

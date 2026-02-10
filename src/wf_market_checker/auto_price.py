@@ -16,6 +16,7 @@ from .app_types import AutoPrice
 if TYPE_CHECKING:
     from .api_client import WFMarketClient
     from .app_types import WatchedItem
+    from .order_checker import OrderChecker
     from .ui import ConsoleUI
     from .v1_models import StatisticsClosedEntry
 
@@ -41,47 +42,56 @@ class PriceUpdate(NamedTuple):
 
 
 class AutoPriceUpdater:
-    """Periodically updates item price thresholds based on market statistics."""
+    """Periodically updates an item's price threshold based on market statistics."""
 
-    def __init__(self, client: WFMarketClient, ui: ConsoleUI) -> None:
-        self._client: WFMarketClient = client
-        self._ui: ConsoleUI = ui
+    __slots__ = (
+        '_client',
+        '_item',
+        '_order_checker',
+        '_ui',
+        'is_ready',
+    )
 
-    async def start(self, item: WatchedItem) -> None:
-        """Start the auto-price update loop for an item.
+    def __init__(self, item: WatchedItem, *, order_checker: OrderChecker) -> None:
+        self._order_checker: OrderChecker = order_checker
+        self._item: WatchedItem = item
+        self.is_ready: asyncio.Event = asyncio.Event()
 
-        Parameters
-        ----------
-        item : WatchedItem
-            The item to update prices for.
-        """
+        # Aliases
+        self._client: WFMarketClient = order_checker.client
+        self._ui: ConsoleUI = order_checker.ui
+
+    async def start(self) -> None:
+        """Start the auto-price update loop."""
         while True:
-            price_update = await self._calculate_price(item)
-            if price_update is not None:
-                item.price_threshold = price_update.final_price
-                self._ui.show_price_update(item, price_update)
+            await self.fetch_price()
 
             # Wait until the next beginning of an hour + a couple minutes
             # This is when the warframe.market API will update the statistics
+            dt: datetime = _next_hour_dt() + API_UPDATE_BUFFER_DT
             try:
-                dt: datetime = _next_hour_dt() + API_UPDATE_BUFFER_DT
                 await utils.sleep_until_dt(dt)
             except asyncio.CancelledError:
                 break
 
-    async def _calculate_price(self, item: WatchedItem) -> PriceUpdate | None:
-        """Fetch statistics and calculate a price threshold for the item.
+    async def fetch_price(self) -> None:
+        """Updates the price threshold."""
+        price_update = await self._calculate_price()
+        if price_update is not None:
+            self._item.price_threshold = price_update.final_price
+            self.is_ready.set()
+            self._ui.show_price_update(self._item, price_update)
 
-        Parameters
-        ----------
-        item : WatchedItem
-            The item to calculate price for.
+    async def _calculate_price(self) -> PriceUpdate | None:
+        """Fetch statistics and calculate a price threshold for the item.
 
         Returns
         -------
         PriceUpdate | None
             The calculated price update, or None if unavailable.
         """
+        item = self._item
+
         try:
             statistics_resp = await self._client.get_statistics(item.name)
         except aiohttp.ClientError as e:
@@ -102,7 +112,7 @@ class AutoPriceUpdater:
             utils.error(f'No statistics entries found for {item.name}.')
             return None
 
-        base = self._compute_base_price(item, entries)
+        base = self._compute_base_price(entries)
         if base is None:
             return None
 
@@ -115,15 +125,12 @@ class AutoPriceUpdater:
 
     def _compute_base_price(
         self,
-        item: WatchedItem,
         entries: list[StatisticsClosedEntry],
     ) -> float | None:
         """Compute the base price before profit margin is applied.
 
         Parameters
         ----------
-        item : WatchedItem
-            The item (used for strategy and fallback checks).
         entries : list[StatisticsClosedEntry]
             Ranked entries sorted newest-first.
 
@@ -132,50 +139,48 @@ class AutoPriceUpdater:
         float | None
             The base price, or None if unavailable.
         """
-        strategy = item.auto_price
+        strategy = self._item.auto_price
 
         if strategy == AutoPrice.LATEST:
             return entries[0].moving_avg
 
         if strategy == AutoPrice.TWELVE_HOUR_LOW:
-            return self._windowed_min(item, entries, _TWELVE_HOURS)
+            return self._windowed_min(entries, _TWELVE_HOURS)
 
         if strategy == AutoPrice.SIX_HOUR_AVG:
-            return self._windowed_avg(item, entries, _SIX_HOURS)
+            return self._windowed_avg(entries, _SIX_HOURS)
 
         return None
 
     def _windowed_min(
         self,
-        item: WatchedItem,
         entries: list[StatisticsClosedEntry],
         window_delta: timedelta,
     ) -> float | None:
         """Get the minimum median within a time window."""
-        filtered = self._filter_to_window(item, entries, window_delta)
+        filtered = self._filter_to_window(entries, window_delta)
         if not filtered:
             return None
         return min(e.median for e in filtered)
 
     def _windowed_avg(
         self,
-        item: WatchedItem,
         entries: list[StatisticsClosedEntry],
         window_delta: timedelta,
     ) -> float | None:
         """Get the average moving_avg within a time window."""
-        filtered = self._filter_to_window(item, entries, window_delta)
+        filtered = self._filter_to_window(entries, window_delta)
         if not filtered:
             return None
         return sum(e.moving_avg for e in filtered) / len(filtered)
 
-    @staticmethod
     def _filter_to_window(
-        item: WatchedItem,
+        self,
         entries: list[StatisticsClosedEntry],
         window_delta: timedelta,
     ) -> list[StatisticsClosedEntry]:
         """Filter entries to those within a time window, with fallback logic."""
+        item = self._item
         cutoff = entries[0].datetime - window_delta
         filtered = [e for e in entries if e.datetime >= cutoff]
 

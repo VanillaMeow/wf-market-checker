@@ -8,7 +8,6 @@ from __future__ import annotations
 __all__ = ('WFMarketClient',)
 
 import asyncio
-from collections.abc import Mapping
 from functools import _make_key
 from types import TracebackType
 from typing import TYPE_CHECKING, Any
@@ -27,6 +26,7 @@ from .v1_responses import StatisticsResponse
 from .v2_responses import ItemResponse, OrdersItemTopResponse
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
     from typing import Self
 
     from .v2_models import Item as ItemModel
@@ -180,7 +180,7 @@ class WFMarketClient:
         webhook = Webhook.from_url(url, session=self.wh_session)
         await webhook.send(**data)
 
-    async def warmup_item_cache(self, item_names: list[str]) -> None:
+    async def warmup_item_cache(self, item_names: Iterable[str]) -> None:
         """Pre-populate the item cache for the given item names.
 
         Parameters

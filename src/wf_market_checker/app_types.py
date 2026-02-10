@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .auto_price import AutoPriceUpdater
 
 
 class AutoPrice(StrEnum):
@@ -19,3 +23,4 @@ class WatchedItem:
     rank: int | None = None
     profit_margin_percent: int = 30
     auto_price: AutoPrice = AutoPrice.NONE
+    auto_pricer: AutoPriceUpdater | None = field(default=None, repr=False)
