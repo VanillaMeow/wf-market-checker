@@ -78,7 +78,7 @@ Each `[[items]]` block defines one item to watch. You can add as many as you wan
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `string` | *required* | The item's URL name on warframe.market (e.g. `molt_augmented`). You can find this in the URL: `warframe.market/items/<name>`. |
-| `price-threshold` | `int` or `string` | *required* | The maximum platinum price to alert on. Can be a fixed number (e.g. `50`) or an auto-price strategy: `"latest"` (latest SMA — constant deal flow), `"6h-avg"` (6h average SMA — balanced), or `"12h-low"` (lowest SMA in 12h — best deals, sparse). |
+| `price-threshold` | `int` or `string` | *required* | The maximum platinum price to alert on. Can be a fixed number (e.g. `50`) or an auto-price strategy: `"latest"` (latest SMA — constant deal flow), `"6h-avg"` (6h average SMA — balanced), or `"12h-low"` (lowest median in 12h — best deals, sparse). |
 | `profit-margin-percent` | `int` | `30` | Auto-price only: alert when the order is at least this percent below the calculated price. Has no effect on fixed numbers. |
 | `rank` | `int` or omitted | *none* | Mod rank filter. Only match orders at this rank. Omit for non-rankable items. |
 | `quantity-min` | `int` | `-1` | Minimum quantity the seller must have listed. `-1` means no minimum. |

@@ -151,11 +151,11 @@ class AutoPriceUpdater:
         entries: list[StatisticsClosedEntry],
         window_delta: timedelta,
     ) -> float | None:
-        """Get the minimum moving_avg within a time window."""
+        """Get the minimum median within a time window."""
         filtered = self._filter_to_window(item, entries, window_delta)
         if not filtered:
             return None
-        return min(e.moving_avg for e in filtered)
+        return min(e.median for e in filtered)
 
     def _windowed_avg(
         self,
