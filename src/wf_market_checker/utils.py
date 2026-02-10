@@ -46,6 +46,11 @@ def indent(text: str, /, *, level: int = 1) -> str:
     return textwrap.indent(text, '  ' * level)
 
 
+def round2(n: float, /) -> str:
+    """Round to 2 decimal places, stripping trailing zeros."""
+    return f'{round(n, 2):g}'
+
+
 def clear_line() -> None:
     """Clears the current line in the terminal."""
     sys.stdout.write('\x1b[2K\r')

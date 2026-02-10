@@ -132,6 +132,7 @@ class WFMarketClient:
 
         return data
 
+    @alru_cache(maxsize=None, ttl=5)
     async def get_statistics(self, item_name: str) -> StatisticsResponse:
         """Fetch item statistics from the v1 API.
 

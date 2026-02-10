@@ -5,18 +5,10 @@ from enum import StrEnum
 
 
 class AutoPrice(StrEnum):
-    TWELVE_HOUR = '12h'
-    SIX_HOUR = '6h'
-    TWO_HOUR = '2h'
+    LATEST = 'latest'
+    TWELVE_HOUR_LOW = '12h-low'
+    SIX_HOUR_AVG = '6h-avg'
     NONE = 'None'
-
-
-# TODO(leah): make automatic and make agnostic
-AUTO_PRICE_TO_SECONDS_MAP: dict[AutoPrice, int] = {
-    AutoPrice.TWELVE_HOUR: 12 * 60 * 60,
-    AutoPrice.SIX_HOUR: 6 * 60 * 60,
-    AutoPrice.TWO_HOUR: 2 * 60 * 60,
-}
 
 
 @dataclass(slots=True)

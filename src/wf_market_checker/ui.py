@@ -10,11 +10,13 @@ from typing import TYPE_CHECKING
 from colorama import Fore
 
 from . import utils
+from .utils import round2 as r2
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from .app_types import WatchedItem
+    from .auto_price import PriceUpdate
 
 
 class ConsoleUI:
@@ -41,21 +43,25 @@ class ConsoleUI:
         sys.stdout.flush()
 
     @staticmethod
-    def show_price_update(item: WatchedItem, new_price: int) -> None:
+    def show_price_update(item: WatchedItem, update: PriceUpdate) -> None:
         """Display a price threshold update notification.
 
         Parameters
         ----------
         item : WatchedItem
             The item whose price was updated.
-        new_price : int
-            The new price threshold.
+        update : PriceUpdate
+            The price update with base, margined, and final values.
         """
         m = (
             f'\r{Fore.BLUE}[AutoPrice]{Fore.RESET} Updated price threshold for '
             f'{Fore.CYAN}{item.name}{Fore.RESET} '
-            f'to {Fore.MAGENTA}{new_price}{Fore.RESET} '
-            f'({Fore.LIGHTBLACK_EX}{item.profit_margin_percent}% profit margin{Fore.RESET}).'
+            f'to {Fore.MAGENTA}{update.final_price}{Fore.RESET} '
+            f'({Fore.LIGHTBLACK_EX}'
+            f'{item.auto_price.value}: {r2(update.base_price)} '
+            f'-> {item.profit_margin_percent}% margin '
+            f'-> {r2(update.margined_price)}'
+            f'{Fore.RESET}).'
         )
         utils.clear_line()
         print(m)
