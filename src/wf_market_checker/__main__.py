@@ -8,12 +8,18 @@ from __future__ import annotations
 
 import asyncio
 
-from .bootstrap import init_checks
-from .order_checker import OrderChecker
+from wf_market_checker.bootstrap import init_checks
+from wf_market_checker.order_checker import OrderChecker
 
 
 def main() -> None:
-    asyncio.run(_main())
+    try:
+        asyncio.run(_main())
+    except KeyboardInterrupt:
+        # For some reason, when built by PyInstaller, KeyboardInterrupt propagates to the asyncio runner
+        # despite being caught in the main `OrderChecker` loop.
+        # This is just to silence the traceback since by this point we've already handled it.
+        pass
 
 
 async def _main() -> None:
