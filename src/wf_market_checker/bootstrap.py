@@ -19,6 +19,13 @@ def _exit_with_message(msg: str, exit_code: int = 0) -> NoReturn:
 
 
 async def init_checks() -> None:
+    """Validate configuration required for our runtime.
+
+    Raises
+    ------
+    SystemExit
+        Raised when required configuration is missing or still placeholder.
+    """
     url = config.webhook_url
     if url and url.endswith('REPLACE_WITH_ACTUAL_WEBHOOK'):
         _exit_with_message(
