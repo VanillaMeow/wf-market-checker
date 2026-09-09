@@ -10,7 +10,13 @@ ASSETS_BASE_URL = URL('https://warframe.market/static/assets/')
 PROFILE_BASE_URL = URL('https://warframe.market/profile/')
 ITEMS_BASE_URL = URL('https://warframe.market/items/')
 
-HEADERS = {'accept': 'application/json', 'platform': 'pc', 'crossplay': 'true'}
+# The API rejects aiohttp's default User-Agent with a 403 response
+HEADERS = {
+    'accept': 'application/json',
+    'platform': 'pc',
+    'crossplay': 'true',
+    'user-agent': 'wf-market-checker/0.1.0',
+}
 WH_HEADERS = {'accept': 'application/json'}
 
 WH_EMBED_COLOR = int('#e362ab'.lstrip('#'), 16)

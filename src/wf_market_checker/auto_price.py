@@ -142,7 +142,7 @@ class AutoPriceUpdater:
         strategy = self._item.auto_price
 
         if strategy == AutoPrice.LATEST:
-            return entries[0].moving_avg
+            return entries[0].moving_average
 
         if strategy == AutoPrice.TWELVE_HOUR_LOW:
             return self._windowed_min(entries, _TWELVE_HOURS)
@@ -172,7 +172,7 @@ class AutoPriceUpdater:
         filtered = self._filter_to_window(entries, window_delta)
         if not filtered:
             return None
-        return sum(e.moving_avg for e in filtered) / len(filtered)
+        return sum(e.moving_average for e in filtered) / len(filtered)
 
     def _filter_to_window(
         self,

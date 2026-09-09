@@ -38,19 +38,24 @@ class StatisticsClosedEntry(BaseModel):
 
     datetime: datetime
     volume: int
-    min_price: int
-    max_price: int
+    min_price: float
+    max_price: float
     avg_price: float
     wa_price: float
     median: float
     id: str
     mod_rank: int
 
-    open_price: int
-    closed_price: int
-    moving_avg: float
-    donch_top: int
-    donch_bot: int
+    open_price: float
+    closed_price: float
+    moving_avg: float | None = None
+    donch_top: float
+    donch_bot: float
+
+    @property
+    def moving_average(self) -> float:
+        """Use the period's average price when its moving average is unavailable."""
+        return self.moving_avg if self.moving_avg is not None else self.avg_price
 
 
 class StatisticsClosed(BaseModel):
