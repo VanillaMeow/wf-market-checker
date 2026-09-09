@@ -6,6 +6,7 @@ __all__ = ('OrderChecker',)
 
 import asyncio
 from copy import copy
+from itertools import chain
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -62,7 +63,6 @@ class OrderChecker:
 
     async def __aenter__(self) -> Self:
         await self.start()
-        self._started = True
         return self
 
     async def __aexit__(
@@ -80,6 +80,7 @@ class OrderChecker:
             raise RuntimeError(m)
 
         await self.client.start()
+        self._started = True
 
     async def stop(self) -> None:
         """Stop the order checker."""
@@ -105,12 +106,13 @@ class OrderChecker:
         # Start the main loop
         try:
             await self._schedule_tasks()
-        except (asyncio.CancelledError, KeyboardInterrupt):
+        except asyncio.CancelledError, KeyboardInterrupt:
             self.ui.show_exiting()
         finally:
-            for task_set in self._task_sets:
-                for task in task_set:
-                    task.cancel()
+            tasks = list(chain.from_iterable(self._task_sets))
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _schedule_tasks(self) -> None:
         """Schedule async tasks for checking orders.

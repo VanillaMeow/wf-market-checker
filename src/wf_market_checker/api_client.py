@@ -67,9 +67,12 @@ class WFMarketClient:
 
     async def stop(self) -> None:
         """Close HTTP sessions."""
-        await self.v1_session.close()
-        await self.v2_session.close()
-        await self.wh_session.close()
+        tasks = [
+            self.v1_session.close(),
+            self.v2_session.close(),
+            self.wh_session.close(),
+        ]
+        await asyncio.gather(*tasks)
 
     async def get_item_orders(
         self, item_name: str, rank: int | None = None
