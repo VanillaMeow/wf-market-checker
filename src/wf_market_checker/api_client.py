@@ -1,6 +1,6 @@
 """HTTP client for the Warframe Market API."""
 
-# ruff: noqa: PLC2701, SLF001
+# ruff: file-ignore[import-private-name, private-member-access]
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations
@@ -9,7 +9,6 @@ __all__ = ('WFMarketClient',)
 
 import asyncio
 from functools import _make_key
-from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -27,6 +26,7 @@ from .v2_responses import ItemResponse, OrdersItemTopResponse
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from types import TracebackType
     from typing import Self
 
     from .v2_models import Item as ItemModel
@@ -203,13 +203,9 @@ class WFMarketClient:
         cache = wrapper._LRUCacheWrapper__cache  # type: ignore[]
 
         # Manually populate cache by ID
-        for item_model in items:
+        for task, item_model in zip(tasks, items, strict=True):
             if item_model is not None:
                 # Key must include self since alru_cache prepends instance for methods
                 key = _make_key((self, item_model.id), {}, typed=False)
 
-                # Create a completed future with the result
-                fut: asyncio.Future[ItemModel | None] = loop.create_future()
-                fut.set_result(item_model)
-
-                cache[key] = _CacheItem(fut, None)
+                cache[key] = _CacheItem(task, None, waiters=0)

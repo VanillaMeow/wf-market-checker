@@ -44,7 +44,7 @@ class OrderChecker:
     def __init__(self) -> None:
         self._order_tasks: set[asyncio.Task[WatchedItem]] = set()
         self._auto_price_tasks: set[asyncio.Task[None]] = set()
-        self._found_orders: TTLCache[str, int] = TTLCache(maxsize=1000, ttl=43200)
+        self._found_orders = TTLCache[str, int](maxsize=1000, ttl=43200)
         self._started: bool = False
         self._total_req: int = 0
 
@@ -159,7 +159,7 @@ class OrderChecker:
 
     def _add_auto_price_task(self, item: WatchedItem) -> None:
         """Add an auto-price update task for an item."""
-        assert item.auto_pricer is not None  # noqa: S101
+        assert item.auto_pricer is not None  # ruff: ignore[assert]
         task = asyncio.create_task(item.auto_pricer.start())
         task.add_done_callback(self._auto_price_tasks.discard)
         self._auto_price_tasks.add(task)
