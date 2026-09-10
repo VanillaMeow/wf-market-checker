@@ -34,6 +34,7 @@ class OrderChecker:
         '_auto_price_tasks',
         '_found_orders',
         '_order_tasks',
+        '_run_task',
         '_started',
         '_task_sets',
         '_total_req',
@@ -45,6 +46,7 @@ class OrderChecker:
     def __init__(self) -> None:
         self._order_tasks: set[asyncio.Task[WatchedItem]] = set()
         self._auto_price_tasks: set[asyncio.Task[None]] = set()
+        self._run_task: asyncio.Task[None] | None = None
         self._found_orders = TTLCache[str, int](maxsize=1000, ttl=43200)
         self._started: bool = False
         self._total_req: int = 0
@@ -88,6 +90,10 @@ class OrderChecker:
             m = 'OrderChecker not started. Call start() before stop().'
             raise RuntimeError(m)
 
+        if self._run_task is not None:
+            self._run_task.cancel()
+            await asyncio.gather(self._run_task, return_exceptions=True)
+
         await self.client.stop()
         self._started = False
 
@@ -97,19 +103,26 @@ class OrderChecker:
             m = 'OrderChecker not started. Call start() before run().'
             raise RuntimeError(m)
 
-        # Warm up the item cache
-        item_names = {item.name for item in config.items}
-        self.ui.show_caching_item('items')
-        await self.client.warmup_item_cache(item_names)
-        self.ui.clear_line()
-
-        # Start the main loop
+        self._run_task = asyncio.create_task(self._run())
         try:
+            await self._run_task
+        finally:
+            self._run_task = None
+
+    async def _run(self) -> None:
+        """Run monitoring and clean up its workers on exit."""
+        try:
+            # Warm up the item cache
+            item_names = {item.name for item in config.items}
+            self.ui.show_caching_item('items')
+            await self.client.warmup_item_cache(item_names)
+            self.ui.clear_line()
+
             await self._schedule_tasks()
         except asyncio.CancelledError, KeyboardInterrupt:
             self.ui.show_exiting()
         finally:
-            tasks = list(chain.from_iterable(self._task_sets))
+            tasks = tuple(chain.from_iterable(self._task_sets))
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
